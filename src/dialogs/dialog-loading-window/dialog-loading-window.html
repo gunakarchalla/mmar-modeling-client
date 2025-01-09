@@ -1,0 +1,11 @@
+<mdc-dialog-title>
+    Please wait...your metamodels and models are being loaded.
+</mdc-dialog-title>
+<mdc-dialog-content>
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <mdc-linear-progress open.bind="open" progress.bind="progress" buffer.bind="buffer"></mdc-linear-progress>
+    </div>
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <mdc-button mdc-dialog-action="close" click.trigger="close()">Close</mdc-button>
+</mdc-dialog-actions>

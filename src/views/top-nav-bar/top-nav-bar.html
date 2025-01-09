@@ -1,0 +1,38 @@
+<import from="../menu-entry/menu-entry"></import>
+<import from="../../dialogs/dialog-algorithm/dialog-algorithm"></import>
+
+<div>
+  <mdc-top-app-bar style="position: relative; background: transparent; color: #000;  z-index: 2;">
+    <mdc-top-app-bar-row>
+      <mdc-top-app-bar-section start>
+        <mdc-top-app-bar-title>MMAR Modeling Client</mdc-top-app-bar-title>
+      </mdc-top-app-bar-section>
+
+      <mdc-top-app-bar-section center>
+        <menu-entry menu-entry.bind="fileMenu"></menu-entry>
+        <menu-entry menu-entry.bind="viewMenu"></menu-entry>
+        <menu-entry menu-entry.bind="editMenu"></menu-entry>
+        <menu-entry menu-entry.bind="diagramMenu"></menu-entry>
+        <menu-entry menu-entry.bind="settingsMenu"></menu-entry>
+        
+        <!-- Open Dialog for Algorithms -->
+        <button mdc-button mdc-tooltipp="Algorithms" click.trigger="dialogHelper.openDialog(dialog, 'openAlgorithmDialog', {})">
+          <mdc-icon>play_arrow</mdc-icon>Algorithms
+        </button>
+        <!-- End Dialog for Algorithms -->
+
+         
+
+      </mdc-top-app-bar-section>
+
+      <mdc-top-app-bar-section end>
+      </mdc-top-app-bar-section>
+    </mdc-top-app-bar-row>
+  </mdc-top-app-bar>
+
+  <!-- Dialog for algorithms -->
+  <mdc-dialog view-model.ref="dialog">
+    <dialog-algorithm></dialog-algorithm>
+  </mdc-dialog>
+
+</div>

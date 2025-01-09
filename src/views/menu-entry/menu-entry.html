@@ -1,0 +1,37 @@
+<import from="../../dialogs/dialog-save-as/dialog-save-as"></import>
+<import from="./../../dialogs/dialog-import-model/dialog-import-model"></import>
+<import from="./../../dialogs/dialog-import-metamodel/dialog-import-metamodel"></import>
+
+<div style="display: flex; flex-direction: row; flex: 1;">
+  <div mdc-menu-surface-anchor ref="menuElementAnchor">
+    <button style="color: #000;" mdc-button
+      click.trigger="menuButtonClicked(menuElement)"><mdc-icon>${menuEntry.icon}</mdc-icon>${menuEntry.name}</button>
+    <mdc-menu class="mdc-menu" view-model.ref="menuElement" mdcmenu:selected.trigger="onMenuSelect($event.detail)"
+      anchor.bind="menuElementAnchor" anchor-corner.bind="anchorCorner" quick-open.bind="quickOpen"
+      default-focus-state.bind="defaultFocusState" fixed.bind="fixed" stay-open-on-selection.bind="stayOpenOnSelection"
+      anchor-margin.bind="anchorMargin">
+      <mdc-list wrap-focus.bind="wrapFocus" tabindex="-1">
+        <template repeat.for="item of menuEntry.items ">
+          <mdc-list-item if.bind="item.label" disabled.bind="item.disabled" value.bind="item.label"
+            click.trigger="onItemClick(item)">${item.label}</mdc-list-item>
+          <mdc-list-divider else></mdc-list-divider>
+        </template>
+      </mdc-list>
+    </mdc-menu>
+  </div>
+</div>
+
+<!-- Dialog for Saving -->
+<mdc-dialog view-model.ref="dialogSaveAs">
+  <dialog-save-as></dialog-save-as>
+</mdc-dialog>
+
+<!-- Dialog for Importing Models -->
+<mdc-dialog view-model.ref="dialogImportModel">
+  <dialog-import-model></dialog-import-model>
+</mdc-dialog>
+
+<!-- Dialog for Importing Metamodels -->
+<mdc-dialog view-model.ref="dialogImportMetamodel">
+  <dialog-import-metamodel></dialog-import-metamodel>
+</mdc-dialog>

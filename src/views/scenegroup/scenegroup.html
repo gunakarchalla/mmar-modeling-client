@@ -1,0 +1,41 @@
+<import from="../../dialogs/dialog-create-new-scene/dialog-create-new-scene"></import>
+<import from="../../dialogs/dialog-copy-scene/dialog-copy-scene"></import>
+<import from="../../dialogs/dialog-loading-window/dialog-loading-window"></import>
+
+<div class="fixed-top">
+  <div style="display: flex; flex-wrap: wrap; gap: 3px;">
+    <mdc-button mdc-button outlined
+      style="flex: 1; font-size: 12px; text-align: center; min-width: 150px; box-sizing: border-box;"
+      click.trigger="dialogCreateNewScene.open()">Create new SceneInstance</mdc-button>
+    <mdc-button mdc-button outlined
+      style="flex: 1; font-size: 12px; text-align: center; min-width: 150px; box-sizing: border-box;"
+      click.trigger="dialogCopyScene.open()">Duplicate SceneInstance</mdc-button>
+  </div>
+</div>
+
+<!-- expandable -->
+<mdc-expandable open.bind="(finalTree.length >0)" style="margin-top: 10px;">
+  <div au-slot="caption"><b>Scenes</b></div>
+  <!-- do not delete <tr> since initial load of tree does not work otherwise -->
+  <hr>
+  <mdc-tree-view nodes.bind="finalTree" click.trigger="clickChecker()" view-model.ref="treeView" class="hidescroll">
+    <mdc-tree-node>
+      <span style="font-size: 10pt;">${$node.name}</span>
+      <span if.bind="$node.helperText" style="font-size: 7pt; color: red; margin-left: 4px;">${$node.helperText}</span>
+    </mdc-tree-node>
+  </mdc-tree-view>
+</mdc-expandable>
+
+<mdc-linear-progress open.bind='scenesLoadingBar'></mdc-linear-progress>
+
+
+<mdc-dialog view-model.ref="dialogCreateNewScene" class="mdc-dialog--fullscreen mdc-dialog--fullheight">
+  <dialog-create-new-scene style="min-height: 80vh;" tree.bind="tree"></dialog-create-new-scene>
+</mdc-dialog>
+<mdc-dialog view-model.ref="dialogCopyScene" class="mdc-dialog--fullscreen mdc-dialog--fullheight">
+  <dialog-copy-scene style="min-height: 80vh;" tree.bind="tree"></dialog-copy-scene>
+</mdc-dialog>
+
+<mdc-dialog view-model.ref="dialogLoadingWindow" class="mdc-dialog--fullscreen mdc-dialog--fullheight">
+  <dialog-loading-window style="min-height: 80vh;" tree.bind="tree"></dialog-loading-window>
+</mdc-dialog>

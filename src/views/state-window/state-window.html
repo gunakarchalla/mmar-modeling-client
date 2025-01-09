@@ -1,0 +1,15 @@
+<import from="../../dialogs/dialog-user-info/dialog-user-info"></import>
+
+<div mdc-ripple style="height: 100%; width: 100%; text-align: center; align-content: center; font-size: 8pt; ">
+  State: ${globalStateObject.activeState}
+  <br>
+  <button mdc-button click.trigger="viewClicked()">
+    <mdc-icon>panorama</mdc-icon>View Mode
+  </button>
+  <button mdc-button click.trigger="dialog.open()" style="color: ${buttonColor};">
+    <mdc-icon>info</mdc-icon>Info
+  </button>
+</div>
+<mdc-dialog view-model.ref="dialog">
+  <dialog-user-info></dialog-user-info>
+</mdc-dialog>

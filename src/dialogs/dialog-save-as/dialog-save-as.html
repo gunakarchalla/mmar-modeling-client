@@ -1,0 +1,57 @@
+<mdc-dialog-title>
+    Enter your value
+</mdc-dialog-title>
+<mdc-dialog-content if.bind="tabContext.length > 0">
+
+    ${init()}
+    <div class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" disabled outlined label="UUID" value.bind="sceneInstance.uuid"></mdc-text-field>
+    </div>
+    <div class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" outlined label="Name" value.bind="sceneInstance.name"></mdc-text-field>
+        <mdc-text-field-helper-line>
+            <mdc-text-field-helper-text persistent>String</mdc-text-field-helper-text>
+        </mdc-text-field-helper-line>
+    </div>
+
+    <div class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" textarea  outlined label="Description"
+            value.bind="sceneInstance.description"></mdc-text-field>
+        <mdc-text-field-helper-line>
+            <mdc-text-field-helper-text persistent>String</mdc-text-field-helper-text>
+        </mdc-text-field-helper-line>
+    </div>
+
+
+
+    <div class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" disabled outlined label="Relative Coordinates 3D"
+            value=${getCoordinates3D()}></mdc-text-field>
+        <mdc-text-field-helper-line>
+            <mdc-text-field-helper-text persistent>String</mdc-text-field-helper-text>
+        </mdc-text-field-helper-line>
+    </div>
+    <div class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" disabled outlined label="Absolute Coordinates 3D"
+            value=${getAbsoluteCoordinates3D()}></mdc-text-field>
+        <mdc-text-field-helper-line>
+            <mdc-text-field-helper-text persistent>String</mdc-text-field-helper-text>
+        </mdc-text-field-helper-line>
+    </div>
+    <div class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" disabled outlined label="Custom Variables"
+            value="${getCustomVariables()}"></mdc-text-field>
+        <mdc-text-field-helper-line>
+            <mdc-text-field-helper-text persistent>String</mdc-text-field-helper-text>
+        </mdc-text-field-helper-line>
+    </div>
+
+
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <button mdc-button data-mdc-dialog-action="cancel" click.trigger="cancel()">Cancel</button>
+    <button mdc-button data-mdc-dialog-action="saveToText" click.trigger="saveToText()"" data-mdc-dialog-button-default>Save to Textfile</button>
+    <button mdc-button data-mdc-dialog-action="saveToDatabase" click.trigger="saveToDatabase()"" data-mdc-dialog-button-default>Save to Database</button>
+
+</mdc-dialog-actions>
+

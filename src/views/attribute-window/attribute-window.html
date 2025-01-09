@@ -1,0 +1,154 @@
+<import from="../../dialogs/dialog-table-attribute/dialog-table-attribute"></import>
+<import from="../../dialogs/dialog-attribute-window/dialog-attribute-window"></import>
+<import from="../../dialogs/dialog-reference-attribute/dialog-reference-attribute"></import>
+<import from="../../dialogs/dialog-upload-gltf/dialog-upload-gltf"></import>
+<import from="../../dialogs/dialog-upload-image/dialog-upload-image"></import>
+<import from="../../dialogs/dialog-upload-file/dialog-upload-file"></import>
+
+<div style="height: 80%; overflow-y: auto;" class="hidescroll">
+
+    <!-- For the given instance display the uuid -->
+    <div if.bind="currentClassInstance">
+        <h5>Static Attributes</h5>
+        <mdc-text-field readonly class="mdc-text-field" outlined label="UUID" value.bind="currentClassInstance.uuid"
+            style="width: 100%;"></mdc-text-field>
+        <hr style="color:silver;">
+    </div>
+    <div if.bind="currentRelationclassInstance">
+        <h5>Static Attributes</h5>
+        <mdc-text-field readonly class="mdc-text-field" outlined label="UUID"
+            value.bind="currentRelationclassInstance.uuid" style="width: 100%;"></mdc-text-field>
+        <hr style="color:silver;">
+    </div>
+    <div if.bind="currentPortInstance">
+        <h5>Static Attributes</h5>
+        <mdc-text-field readonly class="mdc-text-field" outlined label="UUID" value.bind="currentPortInstance.uuid"
+            style="width: 100%;"></mdc-text-field>
+        <hr style="color:silver;">
+    </div>
+
+    <div
+        if.bind="!attributeInstancesNoTable.length == 0 || !attributeInstanceTable.length == 0 || !attributeInstancesReferenceAttribute.length == 0 ">
+        <h5 style="margin: 0; padding: 0;">Dynamic Attributes
+            <!-- <button if.bind="firstLevel" touch mdc-button click.trigger="attributeDialog.open()">
+                <mdc-icon>open_in_full</mdc-icon>
+            </button> -->
+        </h5>
+        <br>
+    </div>
+
+    <!-- for each attributeInstance that is not a tableattribute -->
+    <div if.bind="attributeInstancesNoTable.length !== 0" class="attribute"
+        repeat.for="enhancedAttributeInstance of attributeInstancesNoTable">
+
+        <!-- if attributeInstance is not a boolean and not a 3D object-->
+        <div
+            if.bind="(enhancedAttributeInstance.facets.length == 0 && enhancedAttributeInstance.attributeInstance.uuid_attribute != 'b058b3b4-b523-4ffe-b08e-4f8dda2831c8' && enhancedAttributeInstance.attributeInstance.uuid_attribute != 'd334dd62-5651-4d0f-a7a0-13718f20da36')">
+            ${enhancedAttributeInstance.facets}
+            <mdc-text-field class="mdc-text-field" outlined
+                label.bind="enhancedAttributeInstance.attributeInstance.name"
+                type.bind="enhancedAttributeInstance.uiType"
+                value.bind="enhancedAttributeInstance.attributeInstance.value"
+                change.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)" rows="1"></mdc-text-field>
+            <mdc-text-field-helper-line>
+                <mdc-text-field-helper-text persistent>${enhancedAttributeInstance.uiType}</mdc-text-field-helper-text>
+            </mdc-text-field-helper-line>
+        </div>
+
+        <!-- only if attribute is of 'file' type -->
+        <div if.bind="attributeInstancesUuidsOfFileType.includes(enhancedAttributeInstance.attributeInstance.uuid)">
+            <!-- check if the attribute instance value is equal to default value and show appropriate text on the button-->
+            <mdc-button outlined click.trigger="dialogUploadFile.open()"
+                style="width: 100%;">${!isUUID(enhancedAttributeInstance.attributeInstance.value)
+                ? 'Upload File' : 'Replace File'}</mdc-button>
+            <mdc-dialog view-model.ref="dialogUploadFile">
+                <dialog-upload-file
+                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance"></dialog-upload-file>
+            </mdc-dialog>
+        </div>
+
+        <!-- if enum -> facets must be a value the make dropdown  -->
+        <div if.bind="(enhancedAttributeInstance.facets.length > 0)">
+            <mdc-select label.bind="enhancedAttributeInstance.attributeInstance.name"
+                value.bind="enhancedAttributeInstance.attributeInstance.value"
+                change.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)" required
+                style="display: flex;">
+                <mdc-list>
+                    <mdc-list-item repeat.for="facet of enhancedAttributeInstance.facets"
+                        value.bind="facet">${facet}</mdc-list-item>
+                </mdc-list>
+            </mdc-select>
+        </div>
+
+
+        <!-- only if attribute is 'Object 3D' -->
+        <div
+            if.bind="enhancedAttributeInstance.attributeInstance.uuid_attribute == 'b058b3b4-b523-4ffe-b08e-4f8dda2831c8'">
+            <mdc-button outlined click.trigger="dialogUploadGltf.open()"
+                style="width: 100%;">${enhancedAttributeInstance.attributeInstance.value != '3D Object String' ?
+                'Replace 3D Object' : 'Upload 3D Object'}</mdc-button>
+            <mdc-dialog view-model.ref="dialogUploadGltf">
+                <dialog-upload-gltf first-level.bind="firstLevel"
+                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance"></dialog-upload-gltf>
+            </mdc-dialog>
+        </div>
+
+        <!-- only if attribute is 'Image to detect'  -->
+        <div
+            if.bind="enhancedAttributeInstance.attributeInstance.uuid_attribute == 'd334dd62-5651-4d0f-a7a0-13718f20da36'">
+            <mdc-button outlined click.trigger="dialogUploadImage.open()"
+                style="width: 100%;">${enhancedAttributeInstance.attributeInstance.value != 'Image' ? 'Replace Image' :
+                'Upload Image'}</mdc-button>
+            <mdc-dialog view-model.ref="dialogUploadImage">
+                <dialog-upload-image first-level.bind="firstLevel"
+                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance"></dialog-upload-image>
+            </mdc-dialog>
+        </div>
+        <hr style="color:silver;">
+    </div>
+    
+    <div if.bind="attributeInstanceTable.length !== 0">
+        <h5>Table Attributes</h5>
+        <div repeat.for="enhancedAttributeInstance of attributeInstanceTable">
+            <mdc-button outlined click.trigger="dialog.open()"
+                style="width: 100%;">${enhancedAttributeInstance.attributeInstance.name}
+            </mdc-button>
+            <mdc-dialog view-model.ref="dialog">
+                <dialog-table-attribute
+                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance"></dialog-table-attribute>
+            </mdc-dialog>
+        </div>
+        <hr style="color:silver;">
+    </div>
+
+    <div if.bind="attributeInstancesReferenceAttribute.length !== 0">
+        <h5>Reference Attributes</h5>
+        <div class="attribute" repeat.for="enhancedAttributeInstance of attributeInstancesReferenceAttribute">
+            <mdc-text-field readonly class="mdc-text-field" outlined
+                label.bind="enhancedAttributeInstance.attributeInstance.name"
+                value.bind="enhancedAttributeInstance.attributeInstance.role_instance_from.name"
+                change.trigger=""></mdc-text-field>
+            <!-- This button oppens a dialog. This is done differently than above, since there are multiple buttons using the same view. Thus, the openDialog method handles the handling of the context.  -->
+            <mdc-button outlined
+                click.trigger="openDialog(dialogReferenceAttribute, enhancedAttributeInstance.attributeInstance)"
+                style="width: 100%; word-break: break-word; font-size: .7em;">${enhancedAttributeInstance.attributeInstance.name}
+            </mdc-button>
+        </div>
+        <hr style="color:silver;">
+    </div>
+</div>
+<!-- This is the dialog for the selection of references. The view is always loaded, but will only be opened on click. All the reference buttons use the same view and the context is only given when opening -->
+<mdc-dialog view-model.ref="dialogReferenceAttribute" class="mdc-dialog--fullscreen mdc-dialog--fullheight"
+    mdcdialog:opening.trigger="">
+    <dialog-reference-attribute style="min-height: 80vh;"></dialog-reference-attribute>
+</mdc-dialog>
+
+<!-- we bind the rendering of the dialog to the bindable firstLevel. This ensures that we do not have the dialog in dialogs itselve (infinity loop) -->
+<div if.bind="firstLevel">
+    <!-- <mdc-dialog view-model.ref="attributeDialog">
+        <dialog-attribute-window second-level.bind="true"></dialog-attribute-window>
+    </mdc-dialog> -->
+</div>
+
+
+</div>

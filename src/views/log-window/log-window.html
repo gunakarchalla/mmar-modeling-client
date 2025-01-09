@@ -1,0 +1,35 @@
+<div class="logWindow hidescroll" style="overflow-y: auto;" element.ref="element">
+    <h5 class="fixed-top" style="margin: 0; padding: 0;">Log 
+        <button touch mdc-button click.trigger="dialog.open()">
+            <mdc-icon>open_in_full</mdc-icon>
+        </button>
+    </h5>
+
+    <div mdc-ripple style="align-content: center; font-size: 8pt; border-top: solid 1pt gray;"
+        repeat.for="logEntry of logger.logArray" mdc-tooltip="${logEntry.value}">
+        ${getTime()}:
+        <br>
+        <mdc-icon>${logEntry.status}</mdc-icon>
+        <span>${logEntry.value}</span>
+
+    </div>
+
+</div>
+
+<mdc-dialog view-model.ref="dialog">
+    <mdc-dialog-title>
+        Log Window
+    </mdc-dialog-title>
+    <mdc-dialog-content class="hidescroll">
+        <div mdc-ripple style="align-content: center; font-size: 8pt; border-top: solid 1pt gray;"
+            repeat.for="logEntry of logger.logArray" mdc-tooltip="${logEntry.value}">
+            ${getTime()}:
+            <br>
+            <mdc-icon>${logEntry.status}</mdc-icon>
+            <span>${logEntry.value}</span>
+        </div>
+    </mdc-dialog-content>
+    <mdc-dialog-actions>
+        <button mdc-button data-mdc-dialog-action="ok" data-mdc-dialog-button-default>Ok</button>
+    </mdc-dialog-actions>
+</mdc-dialog>

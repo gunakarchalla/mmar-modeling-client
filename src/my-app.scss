@@ -1,0 +1,165 @@
+@import "./styles/mdc";
+
+$primary : #bdbdbd;
+$secondary : #f5f5f5e5;
+$canvas: white; 
+$background : rgb(252, 252, 252);
+$expandableColor:  rgb(248, 248, 248);
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: $background;
+}
+
+.menu {
+    width: 100vw;
+    background-color: $primary;
+    height: 70px;
+    padding: 0;
+}
+
+.footer {
+    width: 100vw;
+    background-color: $primary;
+    height: 50px;
+    padding: 0;
+    position: fixed;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.flex-container {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 70px - 38px - 48px - 50px);
+}
+
+.column1, .column3 {
+    max-width: 330px;
+    min-width: 200px;
+    width: 20vw;
+    border: 1px solid $primary;
+}
+
+.column2 {
+    max-width: calc(100vw - 200px - 200px);
+    min-width: calc(100vw - 330px - 330px);
+    width: 60vw;
+    border: 1px solid $primary;
+}
+
+.tab-bar-horizontal {
+    height: 48px;
+    padding: 0;
+    overflow-x: hidden;
+    max-width: calc(100vh - 200px - 200px);
+    min-width: calc(100vh - 330px - 230px);
+}
+
+.scroll-y {
+    overflow-y: auto;
+}
+
+.demo-card {
+    width: 45%;
+    margin: 2%;
+}
+
+.mdc-expandable {
+    .mdc-expandable__content-container {
+        .mdc-expandable__content {
+            padding: 0 0 0;
+        }
+    }
+}
+
+.middle_body, .three_canvas {
+    width: 100%;
+    height: 100%;
+    background-color: $canvas;
+}
+
+.attribute {
+    width: 100%;
+    margin-bottom: 10%;
+
+    .mdc-text-field {
+        width: 100%;
+    }
+}
+
+.vl {
+    border-left: 1px solid $primary;
+    height: 100%;
+}
+
+.logWindow {
+    height: 19%;
+    border-top: 1px solid $primary;
+    margin: 0;
+    padding: 0;
+}
+
+.block {
+    display: block;
+}
+
+.hidescroll {
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    -ms-overflow-style: none; // IE and Edge
+    scrollbar-width: none;   // Firefox
+}
+
+.fixed-top {
+    position: -webkit-sticky; // Safari
+    position: sticky;
+    top: 0;
+    background-color: $secondary;
+    z-index: 1;
+    margin: 0;
+    padding: 0;
+}
+
+.mdc-menu {
+    width: auto;
+}
+
+  .gridbody {
+    display: grid;
+    grid-template-columns: 4fr 1fr;
+    grid-template-areas: "content sidebar";
+  }
+
+  .main {
+    grid-column: content;
+  }
+
+  .aside {
+    grid-column: sidebar;
+  }
+
+  .error-message {
+    margin-left: 40px;
+    color: red;
+}
+
+.mdc-expandable{
+    background-color: $expandableColor;
+}
+.mdc-tree-view .mdc-tree-view__node {
+    height: 30px;
+    background-color: $expandableColor;
+  }
+
+  .mdc-expandable .mdc-expandable__header.mdc-expandable__header--open {
+    height: 34px;
+  }
+
+  .mdc-expandable .mdc-expandable__header.mdc-expandable__header--closed {
+    height: 34px;
+  }

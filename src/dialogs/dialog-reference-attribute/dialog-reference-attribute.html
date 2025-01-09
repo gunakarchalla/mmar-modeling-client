@@ -1,0 +1,102 @@
+<mdc-dialog-title>
+  Reference Attribute: ${attributeInstance.name}
+</mdc-dialog-title>
+<mdc-dialog-content style="height: 500px;">
+
+  <div if.bind="referenceRoleInstance">
+    <div class="gridbody">
+      <main>
+        <mdc-text-field outlined label.bind="attributeInstance.name" value.bind="referenceRoleInstance.name"
+          disabled></mdc-text-field>
+      </main>
+      <aside>
+        <mdc-button outlined click.trigger="deleteReferenceRoleInstance()"
+          style="display: flex; height: 100%;">delete</mdc-button>
+      </aside>
+    </div>
+  </div>
+
+  <div if.bind="allowedSceneInstances.length > 0 && !referenceRoleInstance">
+    <div class="gridbody">
+      <main>
+        <mdc-select label="Select Referenced SceneInstance" value.bind="selectedSceneInstanceObject"
+          change.trigger="onSceneInstanceSelect()" required style="display: flex;">
+          <mdc-list>
+            <mdc-list-item repeat.for="object of allowedSceneInstances" value.bind="object">${object.sceneInstance.name}
+              | ${object.sceneInstance.uuid}</mdc-list-item>
+          </mdc-list>
+        </mdc-select>
+      </main>
+      <aside>
+        <mdc-button outlined
+          click.trigger="addReferenceRoleInstance(selectedSceneInstanceObject.sceneInstance, selectedSceneInstanceObject.parentRole, 'sceneInstance')"
+          style="display: flex; height: 100%;">add</mdc-button>
+      </aside>
+    </div>
+  </div>
+
+  <div if.bind="allowedClassInstances.length > 0 && !referenceRoleInstance">
+    <div class="gridbody">
+      <main>
+        <mdc-select label="Select Referenced ClassInstance" value.bind="selectedClassInstanceObject"
+          change.trigger="onClassInstanceSelect()" required style="display: flex;">
+          <mdc-list>
+            <mdc-list-item repeat.for="object of allowedClassInstances" value.bind="object">${getClassInstanceName(object.classInstance)} | ${object.classInstance.uuid}</mdc-list-item>
+          </mdc-list>
+        </mdc-select>
+      </main>
+      <aside>
+        <mdc-button outlined
+          click.trigger="addReferenceRoleInstance(selectedClassInstanceObject.classInstance, selectedClassInstanceObject.parentRole, 'classInstance')"
+          style="display: flex; height: 100%;">add</mdc-button>
+      </aside>
+    </div>
+  </div>
+
+  <div if.bind="allowedRelationclassInstances.length > 0 && !referenceRoleInstance">
+    <div class="gridbody">
+      <main>
+        <mdc-select label="Select Referenced RelationclassInstance" value.bind="selectedRelationclassInstanceObject"
+          change.trigger="onRelationclassInstanceSelect()" required style="display: flex;">
+          <mdc-list>
+            <mdc-list-item repeat.for="object of allowedRelationclassInstances"
+              value.bind="object">${object.relationclassInstance.name} |
+              ${object.relationclassInstance.uuid}</mdc-list-item>
+          </mdc-list>
+        </mdc-select>
+      </main>
+      <aside>
+        <mdc-button outlined
+          click.trigger="addReferenceRoleInstance(selectedRelationclassInstanceObject.relationclassInstance, selectedRelationclassInstanceObject.parentRole, 'relationclassInstance')"
+          style="display: flex; height: 100%;">add</mdc-button>
+      </aside>
+    </div>
+  </div>
+
+  <div if.bind="allowedPortInstances.length > 0 && !referenceRoleInstance">
+    <div class="gridbody">
+      <main>
+        <mdc-select label="Select Referenced PortInstance" value.bind="selectedPortInstanceObject"
+          change.trigger="onPortInstanceSelect()" required style="display: flex;">
+          <mdc-list>
+            <mdc-list-item repeat.for="object of allowedPortInstances" value.bind="object">${object.portInstance.name}
+              | ${object.portInstance.uuid}</mdc-list-item>
+          </mdc-list>
+        </mdc-select>
+      </main>
+      <aside>
+        <mdc-button outlined
+          click.trigger="addReferenceRoleInstance(selectedPortInstanceObject.portInstance, selectedPortInstanceObject.parentRole, 'portInstance')"
+          style="display: flex; height: 100%;">add</mdc-button>
+      </aside>
+    </div>
+  </div>
+
+
+
+  <!-- add an empty line for each entry to make sure the dialog has the right height -->
+
+</mdc-dialog-content>
+<mdc-dialog-actions>
+  <button mdc-button data-mdc-dialog-action="close" click.trigger="close()">Close</button>
+</mdc-dialog-actions>

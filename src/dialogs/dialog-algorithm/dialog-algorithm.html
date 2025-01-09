@@ -1,0 +1,38 @@
+<mdc-dialog-title>
+    Choose your algorithm:
+</mdc-dialog-title>
+<mdc-dialog-content >
+    <div ref="chooseAlgorithm" id="chooseAlgorithm" name="chooseAlgorithm"></div>
+    <h3>Independent algorithms</h3>
+    <mdc-select label="Select independent algorithm to run." value.bind="independentAlgorithmChoice" required
+        style="display: flex;">
+        <mdc-list style="width: 100%;">
+            <mdc-list-item></mdc-list-item>
+            <mdc-list-item repeat.for="independentAlgorithm of procedureNames"
+                value.bind="independentAlgorithm">${independentAlgorithm}</mdc-list-item>
+        </mdc-list>
+    </mdc-select>
+    <br>
+    <mdc-button outlined click.trigger="executeIndependent()" style="display: flex; height: 100%;">run</mdc-button>
+    <!-- Line -->
+    <hr style="border: 0.5px solid; color: #000000;">
+    <h3>Specific algorithms for this SceneType</h3>
+    <mdc-select label="Select dependent algorithm to run." value.bind="dependentAlgorithmChoice" required
+        style="display: flex;">
+        <mdc-list>
+            <mdc-list-item></mdc-list-item>
+            <mdc-list-item repeat.for="dependentAlgorithm of assignedProcedureNames"
+                value.bind="dependentAlgorithm">${dependentAlgorithm}</mdc-list-item>
+        </mdc-list>
+    </mdc-select>
+    <br>
+    <mdc-button outlined click.trigger="executeDependent()" style="display: flex; height: 100%;">run</mdc-button>
+    <!-- Line -->
+    <hr style="border: 0.5px solid; color: #000000;">
+
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <button mdc-button data-mdc-dialog-action="cancel">close</button>
+    <!-- to set width of dialog -->
+    <div style="width: 50vw;"></div>
+</mdc-dialog-actions>

@@ -1,0 +1,17 @@
+<mdc-dialog-title>
+    User Management:
+</mdc-dialog-title>
+<mdc-dialog-content>
+    <!-- form for username and password -->
+    <form>
+        <mdc-text-field class="mdc-text-field" outlined label="Username" value.bind="username" required
+            autocomplete="username"></mdc-text-field>
+        <mdc-text-field class="mdc-text-field" outlined label="Password" value.bind="password" type="password" required
+            autocomplete="current-password"></mdc-text-field>
+        <div if.bind="errorMessage" class="error-message">${errorMessage}</div>
+    </form>
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <button mdc-button data-mdc-dialog-action="ok" data-mdc-dialog-button-default click.trigger="login()">Login</button>
+    <button mdc-button data-mdc-dialog-action="cancel" click.trigger="cancel()">Cancel</button>
+</mdc-dialog-actions>

@@ -1,0 +1,25 @@
+<mdc-dialog-title>
+    Table Attribute: ${attributeInstance.name}
+</mdc-dialog-title>
+<mdc-dialog-content>
+    <table style="border: 1.5px solid; width: inherit;" aria-describedby="Table">
+        <tr style="border: 0.75px solid;">
+          <th repeat.for="col of table" style="border: 0.75px solid;">${col[0].attribute.name}</th>
+        </tr>
+        <tr repeat.for="row of rows" style="border: 0.75px solid;">
+          <td repeat.for="cell of row" style="border: 0.75px solid;">
+            <!-- <input type="text" value.bind="cell.value" > -->
+            <mdc-text-field class="mdc-text-field" value.bind="cell.value" ></mdc-text-field>
+          </td>
+        </tr>
+      </table>
+
+
+      
+       
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <button mdc-button data-mdc-dialog-action="ok" click.trigger="ok()">Ok</button>
+    <button mdc-button data-mdc-dialog-action="close" click.trigger="close()">Close</button>
+    <button mdc-button click.trigger="createRow()">Create Row</button>
+</mdc-dialog-actions>

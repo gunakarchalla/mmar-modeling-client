@@ -1,0 +1,82 @@
+<mdc-dialog-title>
+    User Info:
+</mdc-dialog-title>
+<mdc-dialog-content>
+    <mdc-card outlined>
+
+        <!-- Selection Mode -->
+        <div show.bind="globalStateObject.activeState === selectionMode">
+            <h3 style="MARGIN-BOTTOM: 0;"><strong>You are in Selection Mode:</strong></h3>
+
+            <p>You are in selection mode. This means you can drag around instances in the scene and resize
+                them. Click on an instance to select it.</p>
+
+            <ul>
+                <li>Click on an object enables the dragging mode.</li>
+                <li>Right-click on an object enables the scaling mode.</li>
+                <li>Middle-click on an object enables the rotation mode. (only if in 3D view mode)</li>
+                <li>When an object is selected you can drag or scale it by using the visualized UI elements.</li>
+                <li>Use the arrow keys when an object is selected to shift it to a selected direction.</li>
+                <li>To leave the selection mode you have to click or right-click on an empty area of the canvas.</li>
+            </ul>
+        </div>
+
+        <!-- Drawing Mode -->
+        <div show.bind="globalStateObject.activeState === drawingMode">
+            <h3 style="MARGIN-BOTTOM: 0;"><strong>You are in Drawing Mode:</strong></h3>
+
+            <p>This means you selected a Class in the left panel.<br />
+                Click on a free area on the canvas to insert an instance of that class.<br />
+                To draw a Relationclass, select a relationclass.</p>
+        </div>
+        <div show.bind="globalStateObject.activeState === drawingModeRelationClass">
+            <h3 style="MARGIN-BOTTOM: 0;"><strong>You are in Drawing Mode Relationclass:</strong></h3>
+
+            <p>This means you selected a Relationclass in the left panel.<br />
+                Click on a class instance to start drawing a relationclass instance.<br />
+                To draw a class, select a class in the left panel.</p>
+        </div>
+        <div show.bind="globalStateObject.activeState === viewMode">
+            <h3 style="MARGIN-BOTTOM: 0;"><strong>You are in View Mode</strong></h3>
+
+            <p>This means you did not select any class or relationclass in the left panel, nor did you click on a class-
+                or relationclass instance.</p>
+
+            <ul>
+                <li>Select a class in the left panel to enter the <strong>drawing mode</strong>.</li>
+                <li>Select a relationclass in the left panel to enter the <strong>drawing relationclass mode</strong>.
+                </li>
+                <li>Click on a class- or relationclass instance to enter <strong>selection mode</strong>.</li>
+            </ul>
+        </div>
+        <mdc-list-divider></mdc-list-divider>
+        <h3 style="MARGIN-BOTTOM: 0;"><strong>Create or Load Scene Instance:</strong></h3>
+        <ul>
+            <li>To create a new scene instance, chose your Scene Type in the left panel and click <strong>CREATE NEW
+                    SCENEINSTANCE</strong> or just double-click on the name of the Scene Type.</li>
+            <li>To load an existing scene instance from the database, chose your scene Type, unfold it by clicking on
+                the arrow button and double-click on your scene instance to load.</li>
+        </ul>
+        <mdc-list-divider></mdc-list-divider>
+        <h3 style="MARGIN-BOTTOM: 0;"><strong>Save, Download and Import Scene Instance:</strong></h3>
+        <ul>
+            <li>To save your scene instance, click on the <strong>FILE -> Save Model</strong> button in the top menu.</li>
+            <li>To download your scene instance, click on the <strong>FILE -> Export Model as .json</strong> button in the top menu.</li>
+            <li>To import a scene instance, click on the <strong>FILE -> Import Model</strong> button in the top menu.</li>
+        </ul>
+        <mdc-list-divider></mdc-list-divider>
+        <h3 style="MARGIN-BOTTOM: 0;"><strong>General Actions:</strong></h3>
+        <ul>
+            <li>Zoom: Use your mouse wheele or touch pad to zoom in and out.</li>
+            <li>Move: Right-click and hold to change the view of the scene.</li>
+            <li>Rotate: Middle-click and hold to rotate the scene. (only in 3D view mode)</li>
+            <li>2D/3D View Mode: Click on the 2D/3D slider to switch to the view mode.</li>
+        </ul>
+
+
+    </mdc-card>
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <button mdc-button data-mdc-dialog-action="cancel" click.trigger="cancel()">Cancel</button>
+    <button mdc-button data-mdc-dialog-action="reportProblem" click.trigger="reportProblem()">Report Problem</button>
+</mdc-dialog-actions>

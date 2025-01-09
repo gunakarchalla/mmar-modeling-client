@@ -1,0 +1,30 @@
+<mdc-dialog-title>
+    Enter your value
+</mdc-dialog-title>
+<mdc-dialog-content>
+
+    <br>
+    <mdc-select label="Select SceneType" value.bind="selectedIndex" required style="display: flex;"
+        change.trigger="onSelectionChange($event)">
+        <mdc-list>
+            <mdc-list-item repeat.for="sceneType of tree" value.bind="sceneType">${sceneType.name} | ${sceneType.uuid}</mdc-list-item>
+        </mdc-list>
+    </mdc-select>
+
+    <br>
+
+    <div if.bind="selectedSceneType" class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" outlined label="Name" value.bind="newSceneInstance.name" required></mdc-text-field>
+    </div>
+
+    <div if.bind="selectedSceneType" class="au-text-field" style="margin-bottom: 20px;">
+        <mdc-text-field class="mdc-text-field block" textarea  outlined label="Description"
+            value.bind="newSceneInstance.description"></mdc-text-field>
+    </div>
+
+</mdc-dialog-content>
+<mdc-dialog-actions style="position: absolute; bottom: 10px;">
+    <button mdc-button data-mdc-dialog-action="createNewScene" click.trigger="createNewScene()">Create new
+        Scene</button>
+    <button mdc-button data-mdc-dialog-action="cancel" click.trigger="cancel()">Cancel</button>
+</mdc-dialog-actions>

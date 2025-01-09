@@ -1,0 +1,51 @@
+<import from="../toolbar-container/toolbar-container"></import>
+<import from="../state-window/state-window"></import>
+<import from="../left-nav/left-nav"></import>
+<import from="../middle-body/middle-body"></import>
+<import from="../right-nav/right-nav"></import>
+<import from="../log-window/log-window"></import>
+<import from="../footer/footer"></import>
+
+<div class="ToolbarContainer" style="height: 38px;">
+    <toolbar-container></toolbar-container>
+</div>
+
+<div class="flex-container" style="height: 48px;">
+    <div class="column1">
+        <!-- Content for left column goes here -->
+    </div>
+    <div class="column2">
+        <mdc-tab-bar class="tab-bar-horizontal" use-automatic-activation.bind="automaticActivation"
+            mdctabbar:activated.trigger="clickedTab($event.detail.index)">
+            <div repeat.for="tab of globalObjectInstance.tabContext" style="display: flex; flex-direction: row;">
+                <mdc-tab fixed min-width label="${tab.sceneInstance.name}"
+                    active.bind="$index === $this.globalObjectInstance.selectedTab">
+                </mdc-tab>
+                <div mdc-ripple click.trigger="closeTab(tab)">
+                    <mdc-icon>close</mdc-icon>
+                </div>
+            </div>
+        </mdc-tab-bar>
+    </div>
+    <div class="column3">
+        <!-- Content for right column goes here -->
+        <state-window></state-window>
+    </div>
+</div>
+
+<div class="flex-container">
+    <div class="column1 scroll-y hidescroll">
+        <!-- Content for left column goes here -->
+        <left-nav></left-nav>
+    </div>
+    <div class="column2 " style="overflow-y: auto;">
+        <!-- Content for middle column goes here -->
+        <middle-body></middle-body>
+    </div>
+    <div class="column3 scroll-y hidescroll">
+        <!-- Content for right column goes here -->
+        <right-nav></right-nav>
+        <log-window></log-window>
+    </div>
+</div>
+<footer class="footer"></footer>

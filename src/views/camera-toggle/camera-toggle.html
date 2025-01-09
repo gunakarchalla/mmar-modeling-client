@@ -1,0 +1,16 @@
+<button mdc-button mdc-tooltip="Reset View" click.trigger="resetView()">
+    <mdc-icon>view_in_ar</mdc-icon>
+</button>
+
+<button style="margin-left: 10px;"  mdc-switch three-dimensional.bind="globalObjectInstance.threeDimensional" click.trigger="toggle()"></button>
+<label style="margin-right: 10px;">2D/3D</label>
+<a class="vl"></a>
+<button mdc-button mdc-tooltip="Translate" click.trigger="enableTranslate()">
+    <mdc-icon>open_with</mdc-icon>
+</button>
+<button if.bind="globalObjectInstance.threeDimensional" mdc-button mdc-tooltip="Rotate" click.trigger="enableRotate()">
+    <mdc-icon>cached</mdc-icon>
+</button>
+<button mdc-button mdc-tooltip="Scale" click.trigger="enableScale()">
+    <mdc-icon>open_in_full</mdc-icon>
+</button>

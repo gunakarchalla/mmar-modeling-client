@@ -1,0 +1,13 @@
+<import from="../scenegroup/scenegroup"></import>
+<import from="../class-buttongroup/class-buttongroup"></import>
+<import from="../relationclass-buttongroup/relationclass-buttongroup"></import>
+
+<scenegroup open-tab.bind="openTab"></scenegroup>
+
+
+<div if.bind="openTab">
+<class-buttongroup open-tab.bind="openTab" class="hidescroll"></class-buttongroup>
+
+<relationclass-buttongroup open-tab.bind="openTab"></relationclass-buttongroup>
+</div>
+

@@ -1,0 +1,15 @@
+<mdc-expandable open.bind="openTab">
+    <div au-slot="caption"><b>Relationclasses</b></div>
+    <hr>
+    <mdc-image-list class="standard-image-list image-list--rounded-corners hidescroll"
+        columns.bind="[{count: 3}, {media: 'max-width: 100%', count: 3}]" style="overflow-y: auto; max-height: 40vh;">
+        <mdc-card class="demo-card"
+            repeat.for="class of globalObjectInstance.tabContext[globalObjectInstance.selectedTab].sceneType.relationclasses"
+            id=${class.uuid} click.trigger="onButtonClicked(class.uuid)" name=${class.name}>
+            <mdc-card-primary-action mdc-tooltip="value.bind: class.name" style=" align-items: center; height: 100%; text-align: center;">
+                <mdc-image-list-item src.bind=getImage(class)></mdc-image-list-item>
+                <div style="font-size: 0.7em; word-break: break-word;">${class.name}</div>
+            </mdc-card-primary-action>
+        </mdc-card>
+    </mdc-image-list>
+</mdc-expandable>

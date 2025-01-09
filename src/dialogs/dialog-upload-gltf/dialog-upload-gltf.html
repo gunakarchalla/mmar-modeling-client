@@ -1,0 +1,10 @@
+<mdc-dialog-title>
+    Upload GLTF:
+</mdc-dialog-title>
+<mdc-dialog-content>
+    <div if.bind = 'firstLevel' id="dragdropfirstlevel"></div>
+    <div if.bind = '!firstLevel' id="dragdropsecondlevel"></div>
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <button mdc-button data-mdc-dialog-action="ok" click.trigger="load()">Load</button>
+</mdc-dialog-actions>

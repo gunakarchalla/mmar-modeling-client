@@ -1,0 +1,10 @@
+<mdc-dialog-title>
+     Image:
+</mdc-dialog-title>
+<mdc-dialog-content>
+    <div if.bind = 'firstLevel' id="imagedragdropfirstlevel"></div>
+    <div if.bind = '!firstLevel' id="imagedragdropsecondlevel"></div>
+</mdc-dialog-content>
+<mdc-dialog-actions>
+    <button mdc-button data-mdc-dialog-action="ok" click.trigger="load()">Load</button>
+</mdc-dialog-actions>
