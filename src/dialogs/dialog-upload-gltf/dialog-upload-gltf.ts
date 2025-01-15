@@ -26,7 +26,7 @@ export class DialogUploadGltf {
         this.uppy = new Uppy(
             {
                 restrictions: {
-                    allowedFileTypes: ['.gltf']
+                    allowedFileTypes: ['.gltf','.referenceobject']
                 }
             }
         );
