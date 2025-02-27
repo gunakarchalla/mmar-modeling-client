@@ -440,4 +440,17 @@ export class InstanceUtility {
         return instance;
     }
 
+
+    // retrieves all relations where the given instance is the destination
+    async getIncomingRelationsFromInstance(instanceUUID: UUID) {
+        const relationClasses = await this.getAllRelationClassInstances();
+        return relationClasses.filter(rel => rel.role_instance_to.uuid_has_reference_class_instance == instanceUUID);
+    }
+
+    // retrieves all relations where the given instance is the source
+    async getOutgoingRelationsFromInstance(instanceUUID: UUID) {
+        const relationClasses = await this.getAllRelationClassInstances();
+        return relationClasses.filter(rel => rel.role_instance_from.uuid_has_reference_class_instance == instanceUUID);
+    }
+
 }
