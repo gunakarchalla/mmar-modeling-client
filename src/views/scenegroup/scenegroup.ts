@@ -24,7 +24,7 @@ export class Scenegroup {
         // used in html
     private finalTree = [];
     private clickCounter = 0;
-    // @bindable openTab = null;
+     @bindable openSceneGroup = false;
     @bindable dialogCreateNewScene = null;
     @bindable dialogLoadingWindow = null;
 
@@ -113,6 +113,7 @@ export class Scenegroup {
 
         // set the scenesLoadingBar to false, so that the loading bar will be hidden
         this.scenesLoadingBar = false;
+        this.openSceneGroup = true;
     }
 
     async updateTree() {
@@ -180,6 +181,8 @@ export class Scenegroup {
         this.globalObjectInstance.sceneTree = this.tree;
         // disable loading bar
         this.scenesLoadingBar = false;
+        this
+
     }
 
     async openScene() {
