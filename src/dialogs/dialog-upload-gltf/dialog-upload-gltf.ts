@@ -49,7 +49,14 @@ export class DialogUploadGltf {
         if (files) {
             for (const file of files) {
                 //read the file -> trigger the event listener
+                // if file name is .referenceobject, read as data url
+                if (file.name.includes('.referenceobject')) {
+                    reader.readAsDataURL(file.data);
+                    console.log("Reference object uploaded");
+                } else {
                 reader.readAsText(file.data);
+                console.log("GLTF uploaded");
+                }
                 //remove the file from the uppy dashboard
                 this.uppy.removeFile(file.id)
             }
