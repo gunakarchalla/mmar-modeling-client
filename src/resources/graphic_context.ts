@@ -34,6 +34,7 @@ export class GraphicContext {
   rel_to_objects: custom_object = {};
   labels_rel_from_objects: custom_object = {};
   labels_rel_to_objects: custom_object = {};
+  labels_rel_middle_objects: custom_object = {};
   map = '';
   attached_ports: custom_object = {};
   return_instances: ObjectInstance[];
@@ -58,6 +59,7 @@ export class GraphicContext {
     this.rel_to_objects = {};
     this.labels_rel_from_objects = {};
     this.labels_rel_to_objects = {};
+    this.labels_rel_middle_objects = {};
     this.return_instances = [];
     this.custom_variables = {};
 
@@ -65,7 +67,7 @@ export class GraphicContext {
 
 
   async setVariable(name: string, value: any, instance_adaptable: boolean) {
-    if (this.current_instance_object && instance_adaptable && this.current_instance_object.custom_variables ) {
+    if (this.current_instance_object && instance_adaptable && this.current_instance_object.custom_variables) {
 
       if (this.current_instance_object.custom_variables[name]) {
         this.custom_variables[name] = {
@@ -276,10 +278,10 @@ export class GraphicContext {
 
       for (const mesh of objects) {
         //move the object by the relative position
-      mesh.position.x = x_rel ? mesh.position.x + x_rel : mesh.position.x;
-      mesh.position.y = y_rel ? mesh.position.y + y_rel : mesh.position.y;
-      mesh.position.z = z_rel ? mesh.position.z + z_rel : mesh.position.z;
-        
+        mesh.position.x = x_rel ? mesh.position.x + x_rel : mesh.position.x;
+        mesh.position.y = y_rel ? mesh.position.y + y_rel : mesh.position.y;
+        mesh.position.z = z_rel ? mesh.position.z + z_rel : mesh.position.z;
+
         this.object3D[mesh.uuid] = mesh;
       }
 
@@ -367,6 +369,9 @@ export class GraphicContext {
     await line.computeLineDistances();
     line.scale.set(1, 1, 1);
     this.globalObjectInstance.scene.add(line);
+
+    //set middle pos variable
+    line.userData.midPoint = new THREE.Vector3(0, 0, 0);
 
 
     //set uuid of mesh to class_instance_uuid
@@ -471,7 +476,7 @@ export class GraphicContext {
     this.labels_rel_from_objects[object.uuid] = object;
   }
   async rel_graphic_text_middle(object: THREE.Mesh) {
-    this.logger.log("todo : --> graphic_text_middle", "info");
+    this.labels_rel_middle_objects[object.uuid] = object;
   }
   async rel_graphic_text_to(object: THREE.Mesh) {
     this.labels_rel_to_objects[object.uuid] = object;
@@ -675,7 +680,7 @@ export class GraphicContext {
             textObject.userData.custom_variables[key] = this.globalObjectInstance.current_port_instance.custom_variables[key];
           }
         }
-        
+
         parentObject.userData.custom_variables = this.globalObjectInstance.current_port_instance.custom_variables;
       }
 
@@ -743,17 +748,53 @@ export class GraphicContext {
     if (textObject.parent.type == "Line2") {
       this.globalObjectInstance.dragObjects.unshift(textObject)
     }
+
+    //for line middle text if there is a position stored on the parent, set position to that stored position
+    if (toAttach.userData["midPoint"]) {
+      textObject.position.x = toAttach.userData["midPoint"].x;
+      textObject.position.y = toAttach.userData["midPoint"].y;
+      textObject.position.z = toAttach.userData["midPoint"].z;
+    }
+
+    // Define getter and setter for midPoint
+    //like that, the position of the text is bound directly to the userData.midPoint of the parent object (line)
+    Object.defineProperty(toAttach.userData, 'midPoint', {
+      get() {
+        return this._midPoint;
+      },
+      set(value) {
+        this._midPoint = value;
+        textObject.position.x = value.x;
+        textObject.position.y = value.y;
+        textObject.position.z = value.z;
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    // Initialize midPoint if it exists
+    if (toAttach.userData._midPoint) {
+      textObject.position.x = toAttach.userData._midPoint.x;
+      textObject.position.y = toAttach.userData._midPoint.y;
+      textObject.position.z = toAttach.userData._midPoint.z;
+    }
   }
 
   async drawVizRep_rel() {
-    await this.rel_merge_from_objects();
     const uuid = await this.instanceUtility.get_current_class_instance_uuid();
     let obj = this.object3D[uuid];
-    obj.add(Object.values(this.rel_from_objects)[0]);
 
-    await this.rel_merge_to_objects()
-    this.object3D[await this.instanceUtility.get_current_class_instance_uuid()].add(Object.values(this.rel_to_objects)[0]);
+    // if there is a from object, add it to the object
+    if (Object.values(this.rel_from_objects).length > 0) {
+      await this.rel_merge_from_objects();
+      obj.add(Object.values(this.rel_from_objects)[0]);
+    }
 
+    // if there is a to object, add it to the object
+    if (Object.values(this.rel_to_objects).length > 0) {
+      await this.rel_merge_to_objects();
+      obj.add(Object.values(this.rel_to_objects)[0]);
+    }
 
     for (const object of Object.values(this.labels_rel_from_objects)) {
       const obj: THREE.Mesh = object as THREE.Mesh;
@@ -764,6 +805,12 @@ export class GraphicContext {
       const obj: THREE.Mesh = object as THREE.Mesh;
       await this.attachText(obj, this.object3D[await this.instanceUtility.get_current_class_instance_uuid()].children[1]);
     };
+
+    for (const object of Object.values(this.labels_rel_middle_objects)) {
+      const obj: THREE.Mesh = object as THREE.Mesh;
+      // attach it directly to the line
+      await this.attachText(obj, this.object3D[await this.instanceUtility.get_current_class_instance_uuid()]);
+    }
 
 
     //reset gc
@@ -793,9 +840,9 @@ export class GraphicContext {
     correspondingSceneObject.material = line.material;
 
     // Update the labels of the relation
+    await this.removeLabels(correspondingSceneObject);
     await this.removeLabels(correspondingSceneObject.children[0]);
     await this.removeLabels(correspondingSceneObject.children[1]);
-    await this.removeLabels(correspondingSceneObject);
 
     // Draw the labels of the fromObject
     for (const object of Object.values(this.labels_rel_from_objects)) {
@@ -809,7 +856,11 @@ export class GraphicContext {
       await this.attachText(obj, correspondingSceneObject.children[1]);
     }
 
-    // TODO: Add  here the label for the middle of the relation when implemented
+    // Draw the labels of the middleObject
+    for (const object of Object.values(this.labels_rel_middle_objects)) {
+      const obj: THREE.Mesh = object as THREE.Mesh;
+      await this.attachText(obj, correspondingSceneObject);
+    }
 
     // Reset instance
     await this.resetInstance();
@@ -822,6 +873,7 @@ export class GraphicContext {
     this.rel_to_objects = {};
     this.labels_rel_from_objects = {};
     this.labels_rel_to_objects = {};
+    this.labels_rel_middle_objects = {};
     this.attached_ports = {};
   }
 
