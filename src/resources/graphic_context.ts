@@ -67,12 +67,19 @@ export class GraphicContext {
   async setVariable(name: string, value: any, instance_adaptable: boolean) {
     if (this.current_instance_object && instance_adaptable && this.current_instance_object.custom_variables ) {
 
-      
-      this.custom_variables[name] = {
-        "value": this.current_instance_object.custom_variables[name].value,
-        "instance_adaptable": instance_adaptable,
-        "user_locked": this.current_instance_object.custom_variables[name].user_locked == true ? true : false
-      };
+      if (this.current_instance_object.custom_variables[name]) {
+        this.custom_variables[name] = {
+          "value": this.current_instance_object.custom_variables[name].value,
+          "instance_adaptable": instance_adaptable,
+          "user_locked": this.current_instance_object.custom_variables[name].user_locked == true ? true : false
+        };
+      } else {
+        this.custom_variables[name] = {
+          "value": value,
+          "instance_adaptable": instance_adaptable,
+          "user_locked": false
+        };
+      }
       this.current_instance_object.custom_variables[name] = this.custom_variables[name];
       this.logger.log('variable ' + name + ' value set to instance value: ' + this.custom_variables[name].value, 'info');
     }
