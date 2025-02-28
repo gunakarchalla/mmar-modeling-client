@@ -4258,9 +4258,8 @@ export class FetchHelper implements ICustomElementViewModel {
         return Promise.resolve<void>(null as any);
     }
 
-    // Procedure section created by Marcel Buehlmann --------------------------------------------------------
     getProcedures(): Promise<Procedure> {
-        let url_ = this.baseUrl + "/metamodel/procedures";
+        let url_ = this.baseUrl + "/metamodel/independent_procedures";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -4354,11 +4353,6 @@ export class FetchHelper implements ICustomElementViewModel {
         }
         return Promise.resolve<Procedure>(null as any);
     }
-    // End of procedure endpoints --------------------------------------------------------
-
-
-
-
 
 
     //---------------------------------------------------------------------------------

@@ -37,7 +37,6 @@ export class ProcedureUtility {
         if (Array.isArray(response)) {
             this.procedures = response.map(item => Procedure.fromJS(item) as Procedure);
         }
-        console.error(this.procedures);
         return this.procedures;
     }
 
@@ -51,7 +50,6 @@ export class ProcedureUtility {
         if (Array.isArray(response)) {
             this.assignedProcedures = response.map(item => Procedure.fromJS(item) as Procedure);
         }
-        console.error(this.assignedProcedures);
         return this.assignedProcedures;
     }
 

@@ -181,7 +181,7 @@ export class Animator {
       let startObjectNearestPoint: THREE.Vector3 = this.rayHelper.shootRayFromObject(obj2, obj1);
       let endObjectNearestPoint;
 
-      //todo sometimes error, thus try
+      //todo sometimes error, thus try -> problem not visible for user
       try {
         let fromObj: THREE.Mesh = undefined;
         let toObj: THREE.Mesh = undefined;
@@ -196,6 +196,8 @@ export class Animator {
 
         endObjectNearestPoint = this.rayHelper.shootRayFromObject(fromObj, toObj);
       }
+      //sometimes error, thus catch -> pobably when orientation of line is strange
+      //not visible in client for the user
       catch { console.error('to do: fehler beheben'); }
 
       //if we have a array for the line-pos, the start- and the end point
@@ -337,12 +339,15 @@ export class Animator {
         line.computeLineDistances();
         line.scale.set(1, 1, 1);
 
+        //calculate the middle point of the line at each update of the line.
+        //the function repositions the middle text of a line if there is any. 
         await this.calculateMiddlePoint(line, pos);
       }
       else { console.error('(pos && endObjectNearestPoint && startObjectNearestPoint) == false') }
     }
   }
 
+  // This method calculates the middle point of a line. It is used in the setPos method to update the position of the line.
   async calculateMiddlePoint(line: Line2, pos: number[]) {
     //calculate middle point of the line
         // Step 1: Compute total length of the line
