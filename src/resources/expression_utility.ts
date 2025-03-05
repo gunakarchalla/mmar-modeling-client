@@ -101,8 +101,19 @@ export class ExpressionUtility {
      * @returns {Promise<ClassInstance[]>} - A promise resolving to an array of the class instances. 
      */
     async getClassInstancesByMetaUUID(metaClassUUID: string): Promise<ClassInstance[]> {
-        const instances = await this.instanceUtility.getAllClassInstancesOfMetaClass(metaClassUUID);
+        const instances: ClassInstance[] = await this.instanceUtility.getAllClassInstancesOfMetaClass(metaClassUUID);
         return instances;
+    }
+
+    /**
+    * Retrieves all relation class instances in the local client based on the UUID of the meta relation class.
+    *
+    * @param {string} metaRelClassUUID - The UUID of the meta relation class.
+    * @returns {Promise<RelationclassInstance[]>} - A promise resolving to an array of the relation class instances.
+    */
+    async getRelClassInstancesByMetaUUID(metaRelClassUUID: string): Promise<RelationclassInstance[]> {
+        const instances: RelationclassInstance[] = await this.instanceUtility.getAllRelationClassInstances();
+        return instances.filter(inst => inst.uuid_relationclass == metaRelClassUUID);
     }
 
     /**
