@@ -95,26 +95,19 @@ export class ExpressionUtility {
     }
 
     /**
-     * Retrieves all class instances in the local client based on the UUID of the meta class.
+     * Retrieves all class (and relation class) instances in the local client based on the UUID of the meta class.
      * 
      * @param {string} metaClassUUID - The UUID of the meta class.
-     * @returns {Promise<ClassInstance[]>} - A promise resolving to an array of the class instances. 
+     * @returns {Promise<ClassInstance[]>} - A promise resolving to an array of the class (and relation class) instances. 
      */
     async getClassInstancesByMetaUUID(metaClassUUID: string): Promise<ClassInstance[]> {
-        const instances: ClassInstance[] = await this.instanceUtility.getAllClassInstancesOfMetaClass(metaClassUUID);
-        return instances;
+        const instances = await this.instanceUtility.getAllClassInstancesFromOpenSceneInstance();
+        return instances.filter(inst => 
+            (inst instanceof ClassInstance && inst.uuid_class === metaClassUUID) || 
+            (inst instanceof RelationclassInstance && inst.uuid_relationclass === metaClassUUID)
+        );
     }
 
-    /**
-    * Retrieves all relation class instances in the local client based on the UUID of the meta relation class.
-    *
-    * @param {string} metaRelClassUUID - The UUID of the meta relation class.
-    * @returns {Promise<RelationclassInstance[]>} - A promise resolving to an array of the relation class instances.
-    */
-    async getRelClassInstancesByMetaUUID(metaRelClassUUID: string): Promise<RelationclassInstance[]> {
-        const instances: RelationclassInstance[] = await this.instanceUtility.getAllRelationClassInstances();
-        return instances.filter(inst => inst.uuid_relationclass == metaRelClassUUID);
-    }
 
     /**
      * Retrieves the source (origin) class instance in the local client based on the UUID of the relation class instance. 
