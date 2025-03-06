@@ -159,8 +159,8 @@ export class InstanceUtility {
 
     async getAllSceneInstancesFromLocal() {
         let sceneInstances: SceneInstance[] = [];
-        let tabContextSceneInstance = await this.getTabContextSceneInstance();
-        sceneInstances.push(tabContextSceneInstance);
+        // let tabContextSceneInstance = await this.getTabContextSceneInstance();
+        // sceneInstances.push(tabContextSceneInstance);
         for (const sceneType of this.globalObjectInstance.sceneTree) {
             let children = sceneType.children;
             for (const sceneInstance of children) {
