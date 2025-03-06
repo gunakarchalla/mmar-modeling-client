@@ -97,9 +97,19 @@ export class Initiator {
     }));
 
     //set style of button with id XRButton
-    const xrButton = document.getElementById('XRButton');
-    xrButton.style.bottom = '60px';
-
+    //repeat until button is available
+    let xrButton;
+    const interval = window.setInterval(
+      () => {
+        xrButton = document.getElementById('XRButton');
+        if (xrButton) {
+          xrButton.style.bottom = '60px';
+          clearInterval(interval);
+        } else {
+          this.logger.log('XRButton undefined', 'close')
+        }
+      }
+      , 1000);
 
     // set the default reference space type to local-floor
     this.globalObjectInstance.renderer.xr.enabled = true;
