@@ -134,6 +134,14 @@ export class InstanceUtility {
         return instancesOfClass;
     }
 
+    // retrieves all class and relation class instances of the open scene instance 
+    async getAllClassInstancesFromOpenSceneInstance() {
+        let sceneInstance = await this.getTabContextSceneInstance();
+        let instances = sceneInstance.class_instances || [];
+        instances = instances.concat(sceneInstance.relationclasses_instances || []);
+        return instances;
+    }
+
     async getAllRelationClassInstances() {
         let relationclassInstances: RelationclassInstance[] = [];
         let sceneInstances = await this.getAllSceneInstancesFromLocal();
