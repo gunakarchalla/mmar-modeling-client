@@ -449,16 +449,24 @@ export class InstanceUtility {
     }
 
 
-    // retrieves all relations where the given instance is the destination
-    async getIncomingRelationsFromInstance(instanceUUID: UUID) {
+    // retrieves all relations where the given instance is the destination and optionally filters by a specific relation type (metaClassUUID)
+    async getIncomingRelationsFromInstance(instanceUUID: UUID, metaClassUUID = null) {
         const relationClasses = await this.getAllRelationClassInstances();
-        return relationClasses.filter(rel => rel.role_instance_to.uuid_has_reference_class_instance == instanceUUID);
+        let incomingRelations = relationClasses.filter(rel => rel.role_instance_to.uuid_has_reference_class_instance === instanceUUID);
+        if (metaClassUUID) {
+            incomingRelations = incomingRelations.filter(rel => rel.uuid_relationclass == metaClassUUID);
+        }
+        return incomingRelations;
     }
 
-    // retrieves all relations where the given instance is the source
-    async getOutgoingRelationsFromInstance(instanceUUID: UUID) {
+    // retrieves all relations where the given instance is the source and optionally filters by a specific relation type (metaClassUUID)
+    async getOutgoingRelationsFromInstance(instanceUUID: UUID, metaClassUUID = null) {
         const relationClasses = await this.getAllRelationClassInstances();
-        return relationClasses.filter(rel => rel.role_instance_from.uuid_has_reference_class_instance == instanceUUID);
+        let outgoingRelations = relationClasses.filter(rel => rel.role_instance_from.uuid_has_reference_class_instance == instanceUUID);
+        if (metaClassUUID) {
+            outgoingRelations = outgoingRelations.filter(rel => rel.uuid_relationclass == metaClassUUID);
+        }
+        return outgoingRelations;
     }
 
 }

@@ -102,8 +102,8 @@ export class ExpressionUtility {
      */
     async getClassInstancesByMetaUUID(metaClassUUID: string): Promise<ClassInstance[]> {
         const instances = await this.instanceUtility.getAllClassInstancesFromOpenSceneInstance();
-        return instances.filter(inst => 
-            (inst instanceof ClassInstance && inst.uuid_class === metaClassUUID) || 
+        return instances.filter(inst =>
+            (inst instanceof ClassInstance && inst.uuid_class === metaClassUUID) ||
             (inst instanceof RelationclassInstance && inst.uuid_relationclass === metaClassUUID)
         );
     }
@@ -144,24 +144,25 @@ export class ExpressionUtility {
     }
 
     /**
-     * Retrieves all relation class instances in the local client where the given instance is the destination (target) based on its UUID. 
-     * 
-     * @param {string} instanceUUID - The UUID of any type of instance.
-     * @returns {Promise<RelationclassInstance[]>} - A promise resolving to an array of incoming relation class instances. 
-     */
-    async getIncomingRelationsByInstanceUUID(instanceUUID: string): Promise<RelationclassInstance[]> {
-        const relationClasses = await this.instanceUtility.getIncomingRelationsFromInstance(instanceUUID);
+ * Retrieves all relation class instances in the local client where the given instance is the destination (target) based on its UUID and optionally filters them by a specific relation type (metaClassUUID).
+ * @param {string} instanceUUID - The UUID of any type of instance.
+ * @param {string|null} [metaClassUUID=null] - Optional UUID of the relation class type to filter by.
+ * @returns {Promise<RelationclassInstance[]>} - A promise resolving to an array of incoming relation class instances. 
+ */
+    async getIncomingRelationsByInstanceUUID(instanceUUID: string, metaClassUUID: string | null = null): Promise<RelationclassInstance[]> {
+        const relationClasses = await this.instanceUtility.getIncomingRelationsFromInstance(instanceUUID, metaClassUUID);
         return relationClasses;
     }
 
     /**
-     * Retrieves all relation class instances in the local client where the given instance is the source (origin) based on its UUID.  
+     * Retrieves all relation class instances in the local client where the given instance is the source (origin) based on its UUID and optionally filters them by a specific relation type (metaClassUUID).
      * 
      * @param {string} instanceUUID - The UUID of any type of instance.
+     * @param {string|null} [metaClassUUID=null] - Optional UUID of the relation class type to filter by.
      * @returns {Promise<RelationclassInstance[]>} - A promise resolving to an array of outgoing relation class instances. 
      */
-    async getOutgoingRelationsByInstanceUUID(instanceUUID: string): Promise<RelationclassInstance[]> {
-        const relationClasses = await this.instanceUtility.getOutgoingRelationsFromInstance(instanceUUID);
+    async getOutgoingRelationsByInstanceUUID(instanceUUID: string, metaClassUUID: string | null = null): Promise<RelationclassInstance[]> {
+        const relationClasses = await this.instanceUtility.getOutgoingRelationsFromInstance(instanceUUID, metaClassUUID);
         return relationClasses;
     }
 
