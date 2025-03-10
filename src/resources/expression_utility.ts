@@ -3,6 +3,7 @@ import { GlobalDefinition } from './global_definitions';
 import { InstanceUtility } from './services/instance_utility';
 import { UUID } from 'crypto';
 import { AttributeInstance, ClassInstance, RelationclassInstance } from '../../../mmar-global-data-structure';
+import { VizrepUpdateChecker } from './services/vizrep_update_checker';
 
 @singleton()
 export class ExpressionUtility {
@@ -11,6 +12,7 @@ export class ExpressionUtility {
     constructor(
         private globalObjectInstance: GlobalDefinition,
         private instanceUtility: InstanceUtility,
+        private updateChecker: VizrepUpdateChecker
     ) {
     }
 
@@ -179,5 +181,36 @@ export class ExpressionUtility {
         return incomingRelations.length > 0 && outgoingRelations.length > 0;
     }
 
+    /**
+     *  Checks if there is a visual update
+     */
+    async checkForVisualizationUpdate() {
+        //get all attributeInstances that are assigned to the current sceneInstance, its classInstances, relationclassInstances and portInstances
+        const sceneInstance = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab].sceneInstance;
+        let attributeInstances: AttributeInstance[] = sceneInstance.attribute_instances;
 
+        attributeInstances = [...attributeInstances, ...(await this.instanceUtility.getAllAttributeInstancesFromObjectInstanceRecursively(sceneInstance))];
+
+        //-----------------------------------------
+        // this would be more performant but with the risk that some changes are not detected
+        //----------------------------------------
+
+        //filter the attributeInstances to make sure that there is always only one attributeIstance with the same uuid_class_instance, uuid_port_instance and uuid_scene_instance
+        // attributeInstances = attributeInstances.filter((attributeInstance, index, self) =>
+        //     index === self.findIndex((t) => (
+        //         t.assigned_uuid_class_instance === attributeInstance.assigned_uuid_class_instance &&
+        //         t.assigned_uuid_port_instance === attributeInstance.assigned_uuid_port_instance &&
+        //         t.assigned_uuid_scene_instance === attributeInstance.assigned_uuid_scene_instance
+        //     ))
+        // );
+
+
+        //for each attribute run the checkForVizRepUpdate function
+        //not ideal, since some class_instances might be checked multiple times
+        for (const attributeInstance of attributeInstances) {
+            if (attributeInstance.assigned_uuid_class_instance) {
+                await this.updateChecker.checkForVizRepUpdate(attributeInstance);
+            }
+        }
+    }
 }
