@@ -1,9 +1,11 @@
 import { MetaUtility } from './meta_utility';
 import { singleton } from "aurelia";
-import { Procedure } from "../../../../mmar-global-data-structure";
+import { AttributeInstance, Procedure } from "../../../../mmar-global-data-structure";
 import { FetchHelper } from "./fetchHelper";
 import { GlobalDefinition } from "resources/global_definitions";
 import { ExpressionUtility } from 'resources/expression_utility';
+import { VizrepUpdateChecker } from './vizrep_update_checker';
+import { InstanceUtility } from './instance_utility';
 
 /**
  * Utility class for handling procedures.
@@ -25,8 +27,9 @@ export class ProcedureUtility {
         private globalObjectInstance: GlobalDefinition,
         private fetchHelper: FetchHelper,
         private metaUtility: MetaUtility,
-        private expression: ExpressionUtility
-    ) { }
+        private expression: ExpressionUtility,
+        private updateChecker: VizrepUpdateChecker,
+        private instanceUtility: InstanceUtility) { }
 
     /**
      * Retrieves general procedures.
@@ -61,12 +64,22 @@ export class ProcedureUtility {
     async execute(generalAlgorithmName: string, specificAlgorithmName: string): Promise<void> {
         if (await this.isValidAlgorithmName(generalAlgorithmName)) {
             const generalProcedureCode = await this.getProcedureCodeByName(this.procedures, generalAlgorithmName);
-            if (generalProcedureCode) await this.runProcedureFunction(generalProcedureCode);
+            if (generalProcedureCode) {
+                // run the general procedure
+                await this.runProcedureFunction(generalProcedureCode);
+                // after running the general procedure, check for visualization updates
+                await this.CheckForVisualizationUpdate();
+            }
         }
 
         if (await this.isValidAlgorithmName(specificAlgorithmName)) {
             const specificProcedureCode = await this.getProcedureCodeByName(this.assignedProcedures, specificAlgorithmName);
-            if (specificProcedureCode) await this.runProcedureFunction(specificProcedureCode);
+            if (specificProcedureCode) {
+                // run the specific procedure
+                await this.runProcedureFunction(specificProcedureCode);
+                // after running the specific procedure, check for visualization updates
+                await this.CheckForVisualizationUpdate();
+            }
         }
     }
 
@@ -98,5 +111,38 @@ export class ProcedureUtility {
     async runProcedureFunction(procedureCode: string): Promise<void> {
         const procedureFunction = await this.metaUtility.parseMetaFunction(procedureCode);
         await procedureFunction(this.expression);
+    }
+
+    /**
+     * Checks for visualization updates.
+     */
+    async CheckForVisualizationUpdate() {
+        //get all attributeInstances that are assigned to the current sceneInstance, its classInstances, relationclassInstances and portInstances
+        const sceneInstance = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab].sceneInstance;
+        let attributeInstances: AttributeInstance[] = sceneInstance.attribute_instances;
+
+        attributeInstances = [...attributeInstances, ...(await this.instanceUtility.getAllAttributeInstancesFromObjectInstanceRecursively(sceneInstance))];
+
+        //-----------------------------------------
+        // this would be more performant but with the risk that some changes are not detected
+        //----------------------------------------
+
+        //filter the attributeInstances to make sure that there is always only one attributeIstance with the same uuid_class_instance, uuid_port_instance and uuid_scene_instance
+        // attributeInstances = attributeInstances.filter((attributeInstance, index, self) =>
+        //     index === self.findIndex((t) => (
+        //         t.assigned_uuid_class_instance === attributeInstance.assigned_uuid_class_instance &&
+        //         t.assigned_uuid_port_instance === attributeInstance.assigned_uuid_port_instance &&
+        //         t.assigned_uuid_scene_instance === attributeInstance.assigned_uuid_scene_instance
+        //     ))
+        // );
+
+
+        //for each attribute run the checkForVizRepUpdate function
+        //not ideal, since some class_instances might be checked multiple times
+        for (const attributeInstance of attributeInstances) {
+            if (attributeInstance.assigned_uuid_class_instance) {
+                await this.updateChecker.checkForVizRepUpdate(attributeInstance);
+            }
+        }
     }
 }

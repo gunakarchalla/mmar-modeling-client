@@ -2,7 +2,7 @@ import { FetchHelper } from './fetchHelper';
 import { plainToInstance } from 'class-transformer';
 import { MetaUtility } from './meta_utility';
 import { GlobalDefinition } from 'resources/global_definitions';
-import { UUID, SceneInstance, ClassInstance, RelationclassInstance, AttributeInstance, PortInstance } from '../../../../mmar-global-data-structure';
+import { UUID, SceneInstance, ClassInstance, RelationclassInstance, AttributeInstance, PortInstance, ObjectInstance } from '../../../../mmar-global-data-structure';
 import { singleton, EventAggregator } from 'aurelia';
 import * as THREE from 'three';
 import { Logger } from './logger';
@@ -339,6 +339,31 @@ export class InstanceUtility {
         }
 
         return attributeInstance;
+    }
+
+    /**
+ * Collects all attribute instances from an instanceObject recursively.
+ * This also includes attribute instances from nested objects.
+ * @param obj - The object to collect attribute instances from.
+ * @returns A promise that resolves to an array of attribute instances.
+ */
+    async getAllAttributeInstancesFromObjectInstanceRecursively(obj: ObjectInstance): Promise<AttributeInstance[]> {
+        const attributeInstances: AttributeInstance[] = [];
+
+        if (Array.isArray(obj)) {
+            for (const item of obj) {
+                attributeInstances.push(...(await this.getAllAttributeInstancesFromObjectInstanceRecursively(item)));
+            }
+        } else if (obj && typeof obj === 'object') {
+            for (const key of Object.keys(obj)) {
+                if (key === 'attribute_instance' && Array.isArray(obj[key])) {
+                    attributeInstances.push(...obj[key]);
+                } else {
+                    attributeInstances.push(...(await this.getAllAttributeInstancesFromObjectInstanceRecursively(obj[key])));
+                }
+            }
+        }
+        return attributeInstances;
     }
 
     // get an attributeInstance based on the UUID or the name of the meta attribute and the UUID of a portInstance

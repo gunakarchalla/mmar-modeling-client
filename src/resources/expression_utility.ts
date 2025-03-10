@@ -23,16 +23,17 @@ export class ExpressionUtility {
      * @returns {Promise<string>} - A promise resolving to the value of the attributInstance.
      */
     async attrval(attrUUID: string): Promise<string> {
-        let attributeInstances = await this.instanceUtility.getAttributeInstanceFromClassInstance(attrUUID, this.globalObjectInstance.current_class_instance.uuid, "uuid");
+        let current_class_instance = this.globalObjectInstance.current_class_instance;
+        let attributeInstances = await this.instanceUtility.getAttributeInstanceFromClassInstance(attrUUID, current_class_instance?.uuid, "uuid");
         // if not found in class, get from relationclassInstance
         if (!attributeInstances) {
-            attributeInstances = await this.instanceUtility.getAttributeInstanceFromRelationClassInstance(attrUUID, this.globalObjectInstance.current_class_instance.uuid, "uuid");
+            attributeInstances = await this.instanceUtility.getAttributeInstanceFromRelationClassInstance(attrUUID, current_class_instance?.uuid, "uuid");
         }
         // if not found in relationclass, get from portInstance
-        if (!attributeInstances) {
+        if (!attributeInstances && this.globalObjectInstance.current_port_instance) {
             attributeInstances = await this.instanceUtility.getAttributeInstanceFromPortInstance(attrUUID, this.globalObjectInstance.current_port_instance.uuid, "uuid");
         }
-        return attributeInstances.value;
+        return attributeInstances?.value;
     }
 
     /**
@@ -43,16 +44,16 @@ export class ExpressionUtility {
      * @returns {Promise<string>} - A promise resolving to the value of the attributInstance.
      */
     async attrvalByName(attrName: string): Promise<string> {
-        let attributeInstances = await this.instanceUtility.getAttributeInstanceFromClassInstance(attrName, this.globalObjectInstance.current_class_instance.uuid, "name");
+        let attributeInstances = await this.instanceUtility.getAttributeInstanceFromClassInstance(attrName, this.globalObjectInstance.current_class_instance?.uuid, "name");
         // if not found in class, get from relationclassInstance
         if (!attributeInstances) {
-            attributeInstances = await this.instanceUtility.getAttributeInstanceFromRelationClassInstance(attrName, this.globalObjectInstance.current_class_instance.uuid, "name");
+            attributeInstances = await this.instanceUtility.getAttributeInstanceFromRelationClassInstance(attrName, this.globalObjectInstance.current_class_instance?.uuid, "name");
         }
         // if not found in relationclass, get from portInstance
-        if (!attributeInstances) {
+        if (!attributeInstances && this.globalObjectInstance.current_port_instance) {
             attributeInstances = await this.instanceUtility.getAttributeInstanceFromPortInstance(attrName, this.globalObjectInstance.current_port_instance.uuid, "name");
         }
-        return attributeInstances.value;
+        return attributeInstances?.value;
     }
 
     /**
@@ -65,7 +66,7 @@ export class ExpressionUtility {
     async attrvalByInst(attrUUID: string, instUUID: string): Promise<string> {
         const instance = await this.instanceUtility.getAnyInstance(instUUID);
         const attributeInstances = await this.instanceUtility.getAttributeInstanceFromAnyInstance(attrUUID, instance.uuid, "uuid");
-        return attributeInstances.value;
+        return attributeInstances?.value;
     }
 
     /**

@@ -14,7 +14,7 @@ export class AttributeWindow {
 
   currentClassInstance: ClassInstance = null;
   currentPortInstance: PortInstance = null;
-  currentRelationclasstInstance: RelationclassInstance = null;
+  currentRelationclassInstance: RelationclassInstance = null;
   attributeInstances: AttributeInstance[] = [];
   attributeInstancesUuidsOfFileType: string[] = [];
 
@@ -95,7 +95,7 @@ export class AttributeWindow {
       this.currentClassInstance = sceneInstance.class_instances.find(class_instance => class_instance.uuid == this.globalSelectedObject.getObject().uuid);
       const portInstances = await this.instanceUtility.getAllPortInstancesOfTabContext();
       this.currentPortInstance = portInstances.find(port_instance => port_instance.uuid == this.globalSelectedObject.getObject().uuid);
-      this.currentRelationclasstInstance = sceneInstance.relationclasses_instances.find(relationclass_instance => relationclass_instance.uuid == this.globalSelectedObject.getObject().uuid);
+      this.currentRelationclassInstance = sceneInstance.relationclasses_instances.find(relationclass_instance => relationclass_instance.uuid == this.globalSelectedObject.getObject().uuid);
 
       //if there is a classInstance
       if (this.currentClassInstance) {
@@ -106,8 +106,8 @@ export class AttributeWindow {
         this.attributeInstances = this.currentPortInstance.attribute_instances;
       }
       //if there is a relationclassInstance
-      else if (this.currentRelationclasstInstance) {
-        this.attributeInstances = this.currentRelationclasstInstance.attribute_instance;
+      else if (this.currentRelationclassInstance) {
+        this.attributeInstances = this.currentRelationclassInstance.attribute_instance;
       }
 
       //for sorting after sequence number
