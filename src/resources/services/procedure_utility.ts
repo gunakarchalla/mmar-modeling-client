@@ -28,8 +28,7 @@ export class ProcedureUtility {
         private fetchHelper: FetchHelper,
         private metaUtility: MetaUtility,
         private expression: ExpressionUtility,
-        private updateChecker: VizrepUpdateChecker,
-        private instanceUtility: InstanceUtility) { }
+        private updateChecker: VizrepUpdateChecker) { }
 
     /**
      * Retrieves general procedures.
@@ -68,7 +67,7 @@ export class ProcedureUtility {
                 // run the general procedure
                 await this.runProcedureFunction(generalProcedureCode);
                 // after running the general procedure, check for visualization updates
-                await this.expression.checkForVisualizationUpdate();
+                await this.updateChecker.checkForVisualizationUpdate();
             }
         }
 
@@ -78,7 +77,7 @@ export class ProcedureUtility {
                 // run the specific procedure
                 await this.runProcedureFunction(specificProcedureCode);
                 // after running the specific procedure, check for visualization updates
-                await this.expression.checkForVisualizationUpdate();
+                await this.updateChecker.checkForVisualizationUpdate();
             }
         }
     }
