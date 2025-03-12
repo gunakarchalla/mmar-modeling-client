@@ -40,7 +40,7 @@ module.exports = (env, argv) => {
   return {
     target: 'web',
     mode: isProduction ? 'production' : 'development',
-    devtool: isProduction ? 'source-map' : 'cheap-module-source-map',
+    devtool: isProduction ? 'source-map' : 'inline-source-map',
     entry: {
       entry: './src/main.ts'
     },
@@ -106,6 +106,12 @@ module.exports = (env, argv) => {
           test: /[/\\]src[/\\].+\.html$/i,
           use: '@aurelia/webpack-loader',
           exclude: /node_modules/
+        },
+        {
+          test: /\.js$/,
+          enforce: 'pre',
+          use: ['source-map-loader'],
+          exclude: /node_modules/,
         }
       ]
     },
