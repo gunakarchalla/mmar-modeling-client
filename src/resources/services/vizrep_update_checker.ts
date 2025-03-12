@@ -19,11 +19,14 @@ export class VizrepUpdateChecker {
   ) { 
     //event listener for the vizrep update
     //it is not ideal since we loose the synchronization between the event and the function call
-    this.eventAggregator.subscribe('checkForVizRepUpdate', async payload => { await this.checkForVisualizationUpdate(); });
+    this.eventAggregator.subscribe('checkForVizRepUpdate', payload => { this.checkForVisualizationUpdate(); });
 
   }
 
   async checkForVizRepUpdate(attributeInstance: AttributeInstance) {
+    //if not set yet lock the vizrep update until the current update is finished
+    this.globalObjectInstance.readyForVizRepUpdate = false;
+
     this.gc.current_instance_object = undefined;
     this.gc.resetInstance();
 
@@ -108,6 +111,9 @@ export class VizrepUpdateChecker {
       await this.gc.runVizRepFunction(geometryAsString);
       await this.gc.updateVizRep(objectInstance);
     }
+
+    // unlock the vizrep update
+    this.globalObjectInstance.readyForVizRepUpdate = true;
   }
 
   

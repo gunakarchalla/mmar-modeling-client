@@ -6,7 +6,6 @@ import { AttributeInstance, ClassInstance, RelationclassInstance } from '../../.
 @singleton()
 export class ExpressionUtility {
 
-
     constructor(
         private globalObjectInstance: GlobalDefinition,
         private instanceUtility: InstanceUtility,
@@ -183,6 +182,12 @@ export class ExpressionUtility {
      *  Checks if there is a visual update
      */
     async checkForVisualizationUpdate() {
+        //wait while the vizrep update is not ready since it is running in another thread
+        while (!this.globalObjectInstance.readyForVizRepUpdate) {
+            // wait 100ms
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        this.globalObjectInstance.readyForVizRepUpdate = false;
         this.eventAggregator.publish('checkForVizRepUpdate');
     }
 }

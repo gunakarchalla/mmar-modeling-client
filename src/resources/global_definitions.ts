@@ -52,6 +52,7 @@ export class GlobalDefinition {
   threeDimensional: boolean;
   orbitControls2d: OrbitControls;
   orbitControls3d: OrbitControls;
+  readyForVizRepUpdate: boolean;
 
   constructor() {
     
@@ -86,6 +87,7 @@ export class GlobalDefinition {
     this.importSceneInstances = [];
     this.accessToken = "";
     this.threeDimensional = false;
+    this.readyForVizRepUpdate = true;
   }
   
       
