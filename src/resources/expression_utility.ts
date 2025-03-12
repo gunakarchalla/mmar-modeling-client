@@ -183,6 +183,6 @@ export class ExpressionUtility {
      *  Checks if there is a visual update
      */
     async checkForVisualizationUpdate() {
-        this.eventAggregator.publish('openCreateNewSceneInstanceDialog');
+        this.eventAggregator.publish('checkForVizRepUpdate');
     }
 }

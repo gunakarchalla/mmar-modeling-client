@@ -696,9 +696,9 @@ export class GraphicContext {
     if (object.userData.Label) {
 
       //if there are labels on the object, we delete them
-      for (const label of object.userData.Label) {
+      await Promise.all(object.userData.Label.map(async (label) => {
         await this.deleteObject(label);
-      };
+      }));
       //we remove labels from parent object userData
       object.userData.Label = [];
     }
@@ -825,31 +825,19 @@ export class GraphicContext {
     const correspondingSceneObject = await this.globalObjectInstance.scene.getObjectByProperty('uuid', relationclass_instance.uuid);
 
     // Update the fromObject
-    const fromObject = this.rel_from_objects[relationclass_instance.uuid];  
-    if (fromObject) {
-      correspondingSceneObject.children[0].geometry = fromObject.geometry;
-      correspondingSceneObject.children[0].material = fromObject.material;
-    } else {
-      this.logger.log('No fromObject found while updating visualization for relationclass_instance: ' + relationclass_instance.uuid, 'error');
-    }
+    const fromObject = this.rel_from_objects[relationclass_instance.uuid];
+    correspondingSceneObject.children[0].geometry = fromObject.geometry;
+    correspondingSceneObject.children[0].material = fromObject.material;
 
     // Update the toObject
     const toObject = this.rel_to_objects[relationclass_instance.uuid];
-    if (toObject) {
-      correspondingSceneObject.children[1].geometry = toObject.geometry;
-      correspondingSceneObject.children[1].material = toObject.material;
-    } else {
-      this.logger.log('No toObject found while updating visualization for relationclass_instance: ' + relationclass_instance.uuid, 'error');
-    }
+    correspondingSceneObject.children[1].geometry = toObject.geometry;
+    correspondingSceneObject.children[1].material = toObject.material;
 
     // Update the line of he relationclass.
     const line = this.object3D[relationclass_instance.uuid];
-    if (line) {
     correspondingSceneObject.geometry = line.geometry;
     correspondingSceneObject.material = line.material;
-    } else {
-      this.logger.log('No line found while updating visualization for relationclass_instance: ' + relationclass_instance.uuid, 'error');
-    }
 
     // Update the labels of the relation
     await this.removeLabels(correspondingSceneObject);
@@ -980,7 +968,7 @@ export class GraphicContext {
 
     //remove children
     for (const child of object.children) {
-      this.deleteObject(child as THREE.Mesh);
+      await this.deleteObject(child as THREE.Mesh);
     }
 
     //remove from dragObjects Array
@@ -1009,7 +997,7 @@ export class GraphicContext {
   async updateVizRep(instanceToUpdate: ObjectInstance) {
     //if relationInstance
     if (instanceToUpdate instanceof RelationclassInstance) {
-       await this.updateVizRepRelClass(instanceToUpdate);
+      await this.updateVizRepRelClass(instanceToUpdate);
     }
     //else if the instanceToUpdate is a classInstance
     else if (instanceToUpdate instanceof ClassInstance) {

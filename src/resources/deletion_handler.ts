@@ -54,7 +54,7 @@ export class DeletionHandler {
         sceneInstance.class_instances.splice(index, 1);
         let object: THREE.Object3D = this.globalObjectInstance.scene.getObjectByProperty('uuid', classInstance.uuid);
 
-        this.gc.deleteObject(object as unknown as THREE.Mesh);
+        await this.gc.deleteObject(object as unknown as THREE.Mesh);
 
         //push to log file
         this.logger.log('Class Instance ' + classInstance.name + ' deleted', 'done');
@@ -136,7 +136,7 @@ export class DeletionHandler {
         this.logger.log('Relationclass Instance ' + object.name + ' deleted', 'done');
 
 
-        this.gc.deleteObject(object as unknown as THREE.Mesh);
+        await this.gc.deleteObject(object as unknown as THREE.Mesh);
         //remove active state line
         this.globalStateObject.activeStateLine = undefined;
 

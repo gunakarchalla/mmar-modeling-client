@@ -282,6 +282,8 @@ export class AttributeWindow {
     else if (this.currentPortInstance) {
       await this.hybridAlgorithmsService.checkHybridAlgorithms(null, null, [this.currentPortInstance]);
     }
+
+    return Promise.resolve();
   }
 
   // todo -> add roleinstance name to other reference fields

@@ -61,14 +61,14 @@ export class DialogUploadImage {
         //event listener for when the file is loaded
         reader.addEventListener(
             "load",
-            () => {
+            async () => {
                 //when a file is loaded, convert it to base64 string
                 const result = reader.result;
                 //remove the string 'data:*/*;base64' from the string
                 // const string = result.toString().replace(/^data:image\/[a-z]+;base64,/, "");
                 this.attributeInstance.value = result.toString();
                 
-                this.vizrepUpdateChecker.checkForVizRepUpdate(this.attributeInstance);
+                await this.vizrepUpdateChecker.checkForVizRepUpdate(this.attributeInstance);
             },
             { passive: true }
         );
