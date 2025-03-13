@@ -19,8 +19,10 @@ export class VizrepUpdateChecker {
   ) { 
     //event listener for the vizrep update
     //it is not ideal since we loose the synchronization between the event and the function call
-    this.eventAggregator.subscribe('checkForVizRepUpdate', payload => { this.checkForVisualizationUpdate(); });
+    this.eventAggregator.subscribe('checkForVizRepUpdate', async payload => { await this.checkForVisualizationUpdate(); });
 
+    //event listener for the vizrep update for specific attribute instances
+    this.eventAggregator.subscribe('checkForVizRepUpdateByAttributeInstance', async payload => { await this.checkForVizRepUpdate(payload as AttributeInstance);});
   }
 
   async checkForVizRepUpdate(attributeInstance: AttributeInstance) {

@@ -190,4 +190,17 @@ export class ExpressionUtility {
         this.globalObjectInstance.readyForVizRepUpdate = false;
         this.eventAggregator.publish('checkForVizRepUpdate');
     }
+
+    /**
+     *  Checks if there is a visual update regarding a specific AttributeInstance
+     */
+    async checkForVisualizationUpdateByAttributeInstance(attributeInstance: AttributeInstance) {
+        //wait while the vizrep update is not ready since it is running in another thread
+        while (!this.globalObjectInstance.readyForVizRepUpdate) {
+            // wait 100ms
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        this.globalObjectInstance.readyForVizRepUpdate = false;
+        this.eventAggregator.publish('checkForVizRepUpdateByAttributeInstance', attributeInstance);
+    }
 }
