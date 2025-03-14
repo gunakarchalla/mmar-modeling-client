@@ -192,15 +192,19 @@ export class ExpressionUtility {
     }
 
     /**
-     *  Checks if there is a visual update regarding a specific AttributeInstance
-     */
-    async checkForVisualizationUpdateByAttributeInstance(attributeInstance: AttributeInstance) {
-        //wait while the vizrep update is not ready since it is running in another thread
-        while (!this.globalObjectInstance.readyForVizRepUpdate) {
-            // wait 100ms
-            await new Promise((resolve) => setTimeout(resolve, 20));
+         *  Checks if there is a visual update regarding a specific AttributeInstance
+         */
+    async checkForVisualizationUpdateByAttributeUUID(instanceUUID: string, metaAttributeUUID: string) {
+        const instance = await this.instanceUtility.getAnyInstance(instanceUUID);
+        const attributeInstance = await this.instanceUtility.getAttributeInstanceFromAnyInstance(metaAttributeUUID, instance.uuid, "uuid");
+        if (attributeInstance) {
+            //wait while the vizrep update is not ready since it is running in another thread
+            while (!this.globalObjectInstance.readyForVizRepUpdate) {
+                // wait 100ms
+                await new Promise((resolve) => setTimeout(resolve, 20));
+            }
+            this.globalObjectInstance.readyForVizRepUpdate = false;
+            this.eventAggregator.publish('checkForVizRepUpdateByAttributeInstance', attributeInstance);
         }
-        this.globalObjectInstance.readyForVizRepUpdate = false;
-        this.eventAggregator.publish('checkForVizRepUpdateByAttributeInstance', attributeInstance);
     }
 }
