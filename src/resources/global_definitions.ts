@@ -53,6 +53,7 @@ export class GlobalDefinition {
   orbitControls2d: OrbitControls;
   orbitControls3d: OrbitControls;
   readyForVizRepUpdate: boolean;
+  runMechanism: boolean;
 
   constructor() {
     
@@ -88,6 +89,7 @@ export class GlobalDefinition {
     this.accessToken = "";
     this.threeDimensional = false;
     this.readyForVizRepUpdate = true;
+    this.runMechanism = false;
   }
   
       

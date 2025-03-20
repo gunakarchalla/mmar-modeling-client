@@ -358,7 +358,7 @@ export class InstanceCreationHandler {
                     attribute,
                     null,
                     relationclass_instance.uuid,
-                    attribute.name + ' in ' + relation_metaclass.name,
+                    attribute.default_value ? attribute.default_value : "not defined",
                     null,
                     null,
                     null,

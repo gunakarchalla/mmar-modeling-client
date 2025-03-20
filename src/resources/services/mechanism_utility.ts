@@ -2,6 +2,8 @@ import { singleton } from "aurelia";
 import { GlobalDefinition } from "resources/global_definitions";
 import { MetaUtility } from "./meta_utility";
 import { ExpressionUtility } from "resources/expression_utility";
+import { InstanceUtility } from "./instance_utility";
+import { AttributeInstance, ObjectInstance } from "../../../../mmar-global-data-structure";
 
 /**
  * Utility class for executing mechanisms on instances.
@@ -11,7 +13,8 @@ export class MechanismUtility {
     constructor(
         private gc: GlobalDefinition,
         private metaUtility: MetaUtility,
-        private expression: ExpressionUtility
+        private expression: ExpressionUtility,
+        private instanceUtility: InstanceUtility
     ) { }
 
     /**
@@ -20,39 +23,30 @@ export class MechanismUtility {
     async executeMechanismOnInstance() {
         const tabContext = this.gc.tabContext;
         const selectedTab = this.gc.selectedTab;
-        const classes = tabContext[selectedTab].sceneType.classes;
-        const class_instances = tabContext[selectedTab].sceneInstance.class_instances;
-        // Prepare a map for quick lookup of attributes by uuid
-        const attributeMap = new Map();
+        const sceneInstance = tabContext[selectedTab]?.sceneInstance;
 
-        // Collect all attributes from all classes
-        classes.forEach(({ attributes }) =>
-            // fill the map for quick lookup of attributes by uuid
-            attributes.forEach(attribute =>
-                attributeMap.set(attribute.uuid, attribute)
-            )
-        );
+        if (sceneInstance) {
 
-        // List all attribute_instances and their corresponding attributes
-        const allAttributeInstances = class_instances.flatMap(({ attribute_instance }) =>
-            attribute_instance.map(instance => ({
-                // get the attribute_instance
-                attribute_instance: instance,
-                // get the attribute from the map
-                attribute: attributeMap.get(instance.uuid_attribute),
-                // get the attribute_type from the attribute
-                attribute_type: attributeMap.get(instance.uuid_attribute)?.attribute_type
-            }))
-        );
+            // get all attribute instances from the sceneinstance
+            const allAttributeInstances: AttributeInstance[] = await this.instanceUtility.getAllAttributeInstancesFromObjectInstanceRecursively(sceneInstance);
+            // filter attributes that match mechanism function
+            const targetAttributeInstances = allAttributeInstances.filter(attributeInstance => attributeInstance.value.startsWith("async function"));
+            console.log(targetAttributeInstances);
 
-        // Search for the mechanism attribute_type with the specific UUID
-        const targetUUID = "a8e33bad-9eed-4a24-a4b2-406c5439d13a";
-        const targetAttributeInstances = allAttributeInstances.filter(({ attribute_type }) => attribute_type?.uuid === targetUUID);
+            if (targetAttributeInstances.length > 0) {
+                for (const targetAttributeInstance of targetAttributeInstances) {
+                    const generalMechanismCode = targetAttributeInstance.value.toString();
+                    let contextInstance;
+                    if (targetAttributeInstance.assigned_uuid_class_instance) {
+                        contextInstance = await this.instanceUtility.getClassInstance(targetAttributeInstance.assigned_uuid_class_instance);
+                    } else if (targetAttributeInstance.assigned_uuid_port_instance) {
+                        contextInstance = await this.instanceUtility.getPortInstance(targetAttributeInstance.assigned_uuid_port_instance);
+                    } else if (targetAttributeInstance.assigned_uuid_scene_instance) {
+                        contextInstance = await this.instanceUtility.getSceneInstance(targetAttributeInstance.assigned_uuid_scene_instance);
+                    }
 
-        if (targetAttributeInstances.length > 0) {
-            for (const targetAttributeInstance of targetAttributeInstances) {
-                const generalMechanismCode = targetAttributeInstance.attribute_instance.value.toString();
-                await this.runMechanismFunction(generalMechanismCode);
+                    contextInstance ? await this.runMechanismFunction(generalMechanismCode, contextInstance) : console.log("No context instance found for mechanism");
+                }
             }
         }
     }
@@ -61,8 +55,8 @@ export class MechanismUtility {
      * Runs the mechanism function with the provided mechanism code.
      * @param mechanismCode The mechanism code to be executed.
      */
-    async runMechanismFunction(mechanismCode: string) {
+    async runMechanismFunction(mechanismCode: string, contextInstance: ObjectInstance): Promise<void> {
         const mechanismFunction = await this.metaUtility.parseMetaFunction(mechanismCode);
-        await mechanismFunction(this.expression);
+        await mechanismFunction(this.expression, contextInstance);
     }
 }

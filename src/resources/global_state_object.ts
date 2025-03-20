@@ -96,6 +96,8 @@ export class GlobalStateObject {
       this.globalObjectInstance.elementContainer.style.cursor = "copy";
 
     }
+
+    this.globalObjectInstance.runMechanism = true;
   }
   getState() {
     return this.activeState;
