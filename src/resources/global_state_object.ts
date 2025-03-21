@@ -96,8 +96,10 @@ export class GlobalStateObject {
       this.globalObjectInstance.elementContainer.style.cursor = "copy";
 
     }
-
-    this.globalObjectInstance.runMechanism = true;
+    //clear mechanismChecked array
+    this.globalObjectInstance.mechanismChecked = [];
+    //run mechanism if not in DrawingModeRelationClass -> otherwise there may be errors while drawing lines
+    if (this.getActiveStateLine() != 'DrawingModeRelationClass (line)') { this.globalObjectInstance.runMechanism = true};
   }
   getState() {
     return this.activeState;
