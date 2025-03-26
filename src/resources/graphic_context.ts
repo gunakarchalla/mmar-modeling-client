@@ -160,7 +160,7 @@ export class GraphicContext {
 
     }
 
-    const box = new THREE.Mesh(geometry, material);
+    const box : THREE.Mesh = new THREE.Mesh(geometry, material);
     box.position.x = x_rel ? x_rel : box.position.x;
     box.position.y = y_rel ? y_rel : box.position.y;
     box.position.z = z_rel ? z_rel : box.position.z;
@@ -198,7 +198,7 @@ export class GraphicContext {
       material.color.set('white');
     }
 
-    const plane = new THREE.Mesh(geometry, material);
+    const plane : THREE.Mesh = new THREE.Mesh(geometry, material);
     //set position
     plane.position.x = x_rel ? x_rel : plane.position.x;
     plane.position.y = y_rel ? y_rel : plane.position.y;
@@ -238,7 +238,7 @@ export class GraphicContext {
       material.color.set('white');
     }
 
-    const sphere = new THREE.Mesh(geometry, material);
+    const sphere : THREE.Mesh = new THREE.Mesh(geometry, material);
     //set position
     sphere.position.x = x_rel ? x_rel : sphere.position.x;
     sphere.position.y = y_rel ? y_rel : sphere.position.y;
@@ -253,6 +253,9 @@ export class GraphicContext {
   //load a predefined gltf to the object
   //!! this must load async in the vizRep
   async graphic_gltf(objectString: string, x_rel?: number, y_rel?: number, z_rel?: number) {
+
+    // return array
+    const meshes : THREE.Mesh[] = [];
 
     //we define the loader
     const loader = new GLTFLoader();
@@ -283,9 +286,11 @@ export class GraphicContext {
         mesh.position.z = z_rel ? mesh.position.z + z_rel : mesh.position.z;
 
         this.object3D[mesh.uuid] = mesh;
+        meshes.push(mesh);
       }
 
     });
+    return meshes;
   }
 
 
@@ -333,6 +338,22 @@ export class GraphicContext {
 
     //return only used for relations
     return textMesh;
+  }
+
+  //this creates a 3D object that is a clickable button
+  async graphic_button(object : THREE.Mesh | THREE.Mesh[], expression?: string) {
+    //check if THREE.Mesh or THREE.Mesh[] is passed
+    if (Array.isArray(object)) {
+      for (const obj of object) {
+        obj.userData.isButton = true;
+        obj.userData.expression = expression;
+      }
+    } else {
+      object.userData.isButton = true;
+      object.userData.expression = expression;
+    }
+    console.log("button created with expression: " + expression);
+    return object;
   }
 
   //this creates a 3D line
@@ -1019,5 +1040,4 @@ export class GraphicContext {
     const vizRepFunction = await this.metaUtility.parseMetaFunction(vizRepCode);
     await vizRepFunction(this);
   }
-
 }
