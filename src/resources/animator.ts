@@ -36,7 +36,7 @@ export class Animator {
       this.globalObjectInstance.renderer.render(this.globalObjectInstance.scene, this.globalObjectInstance.camera);
       //hook to check mechanisms
         if (this.globalObjectInstance.runMechanism) {
-          await this.mechanismUtility.executeMechanismOnInstance();
+          await this.mechanismUtility.executeAllMechanisms();
           this.globalObjectInstance.runMechanism = false;
         }
       this.globalObjectInstance.render = false;
@@ -47,7 +47,7 @@ export class Animator {
       this.globalObjectInstance.renderer.render(this.globalObjectInstance.scene, this.globalObjectInstance.camera);
       
         if (this.globalObjectInstance.runMechanism) {
-          await this.mechanismUtility.executeMechanismOnInstance();
+          await this.mechanismUtility.executeAllMechanisms();
           this.globalObjectInstance.runMechanism = false;
         }
 

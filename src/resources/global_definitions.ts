@@ -54,7 +54,6 @@ export class GlobalDefinition {
   orbitControls3d: OrbitControls;
   readyForVizRepUpdate: boolean;
   runMechanism: boolean;
-  mechanismChecked: string[];
 
   constructor() {
     
@@ -91,7 +90,6 @@ export class GlobalDefinition {
     this.threeDimensional = false;
     this.readyForVizRepUpdate = true;
     this.runMechanism = false;
-    this.mechanismChecked = [];
   }
   
       
