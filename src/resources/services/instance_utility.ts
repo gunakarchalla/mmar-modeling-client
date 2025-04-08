@@ -488,9 +488,9 @@ export class InstanceUtility {
     // retrieves all relations where the given instance is the destination and optionally filters by a specific relation type (metaClassUUID)
     async getIncomingRelationsFromInstance(instanceUUID: UUID, metaClassUUID = null) {
         const relationClasses = await this.getAllRelationClassInstances();
-        let incomingRelations = relationClasses.filter(rel => rel.role_instance_to.uuid_has_reference_class_instance === instanceUUID);
+        let incomingRelations = relationClasses?.filter(rel => rel.role_instance_to?.uuid_has_reference_class_instance === instanceUUID);
         if (metaClassUUID) {
-            incomingRelations = incomingRelations.filter(rel => rel.uuid_relationclass == metaClassUUID);
+            incomingRelations = incomingRelations?.filter(rel => rel.uuid_relationclass == metaClassUUID);
         }
         return incomingRelations;
     }
