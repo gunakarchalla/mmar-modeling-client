@@ -1,6 +1,6 @@
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { GlobalSelectedObject } from './global_selected_object';
-import { singleton } from 'aurelia';
+import { EventAggregator, singleton } from 'aurelia';
 import { GlobalDefinition } from './global_definitions';
 import { Logger } from './services/logger';
 
@@ -15,13 +15,16 @@ export class GlobalStateObject {
   constructor(
     private globalObjectInstance: GlobalDefinition,
     private globalSelectedObject: GlobalSelectedObject,
-    private logger: Logger
+    private logger: Logger,
+    private eventAggregator: EventAggregator
   ) {
     this.stateNames = ['SelectionMode (drag)', 'ViewMode', 'DrawingMode (insert)', 'DrawingModeRelationClass (line)', 'SimulationMode'];
     this.activeState = '';
   }
   onStateChange() {
     this.logger.log(`The state has changed to ${this.getState()}`, 'info');
+
+    this.eventAggregator.publish('removeAttributeGui', { update: true });
 
     this.globalSelectedObject.removeObject();
     if (this.globalObjectInstance.transformControls) {

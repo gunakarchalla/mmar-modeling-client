@@ -184,6 +184,7 @@ export class InteractionHandler {
   }
 
   async onDrawingMode() {
+
     //objects to intersect with this raycaster
     this.objects = [].concat(this.globalObjectInstance.dragObjects);
     this.objects.push(this.globalObjectInstance.plane);
