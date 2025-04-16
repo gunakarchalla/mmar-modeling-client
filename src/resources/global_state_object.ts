@@ -17,7 +17,7 @@ export class GlobalStateObject {
     private globalSelectedObject: GlobalSelectedObject,
     private logger: Logger
   ) {
-    this.stateNames = ['SelectionMode (drag)', 'ViewMode', 'DrawingMode (insert)', 'DrawingModeRelationClass (line)'];
+    this.stateNames = ['SelectionMode (drag)', 'ViewMode', 'DrawingMode (insert)', 'DrawingModeRelationClass (line)', 'SimulationMode'];
     this.activeState = '';
   }
   onStateChange() {
@@ -95,6 +95,20 @@ export class GlobalStateObject {
       //set cursor style
       this.globalObjectInstance.elementContainer.style.cursor = "copy";
 
+    }
+    //if SimulationMode
+    else if (this.activeState === this.stateNames[4]) {
+      this.globalObjectInstance.transformControls.enabled = false;
+      this.globalObjectInstance.orbitControls.enabled = true;
+        //enable orbitcontrols zoom
+        this.globalObjectInstance.orbitControls.enableZoom = true;
+        //enable orbitcontrols rotation
+        this.globalObjectInstance.orbitControls.enableRotate = true;
+      this.logger.log('transformControls disabled', 'info');
+      this.logger.log('orbitControls enabled', 'info');
+
+      //set cursor style
+      this.globalObjectInstance.elementContainer.style.cursor = "help";
     }
   }
   getState() {

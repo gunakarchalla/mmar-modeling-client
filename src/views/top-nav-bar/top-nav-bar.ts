@@ -147,4 +147,24 @@ export class TopNavBar {
       ],
       open: false
    };
+
+   simulationMenu = {
+      name: "Simulation",
+      icon: "play_circle",
+      open: false,
+      items: [
+         {
+            label: "Enter Simulation Mode",
+            icon: "play_arrow",
+            disabled: false
+         },
+         {
+            label: "Exit Simulation Mode",
+            icon: "stop",
+            disabled: false
+         }
+      ]
+   }
+      
+
 }
