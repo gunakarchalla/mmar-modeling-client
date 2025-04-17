@@ -20,6 +20,7 @@ import { InstanceCreationHandler } from './instance_creation_handler';
 import { ConsistencyChecker } from './consistency_checker';
 import { Logger } from './services/logger';
 import { ExpressionUtility } from './expression_utility';
+import { SimulationUtility } from './services/simulation_utility';
 
 @singleton()
 export class InteractionHandler {
@@ -54,7 +55,8 @@ export class InteractionHandler {
     private instanceUtility: InstanceUtility,
     private logger: Logger,
     private deletionHandler: DeletionHandler,
-    private expression: ExpressionUtility
+    private expression: ExpressionUtility,
+    private simulationUtility: SimulationUtility
   ) { }
 
 
@@ -74,7 +76,7 @@ export class InteractionHandler {
 
     //if state === ViewMode
     if (this.programState === this.globalStateObject.stateNames[1]) {
-      this.onViewMode();
+      await this.onViewMode();
     }
 
     //if state === SelectionMode
@@ -92,8 +94,28 @@ export class InteractionHandler {
     else if (this.programState === this.globalStateObject.stateNames[3]) {
       await this.onDrawingModeRelationclass();
     }
+    //if state === SimulationMode
+    else if (this.programState === this.globalStateObject.stateNames[4]) {
+      await this.onSimulationMode();
+    }
   }
 
+  /**
+   * Handles the interaction logic for "Selection Mode" in the application.
+   * 
+   * This method is triggered when the user clicks on the "canvas" in "Selection Mode".
+   * It determines the type of interaction (translate, scale, or rotate) based on the mouse button clicked,
+   * detects intersections with objects in the scene, and attaches the transform controls to the selected object.
+   * Additionally, it updates the global state and publishes events for updating the attribute GUI.
+   *
+   *
+   * @remarks
+   * - Left-click (button 0) sets the transform controls to "translate" mode.
+   * - Right-click (button 2) sets the transform controls to "scale" mode.
+   * - Middle-click (button 1) sets the transform controls to "rotate" mode (only in 3D mode).
+   * - If an object is intersected, it is selected, and its attributes are prepared for display in the GUI.
+   * - If no object is intersected, the selection is cleared, and the state is reset to "View Mode".
+   */
   async onSelectionMode() {
     if (this.clickedButton == 0) {
       this.globalObjectInstance.transformControls.setMode('translate');
@@ -164,7 +186,20 @@ export class InteractionHandler {
     this.globalObjectInstance.render = true;
   }
 
-  onViewMode() {
+/**
+   * Handles the transition to "View Mode" in the application.
+   * 
+   * This method detaches objects from the transform controls, sets up the objects
+   * to be intersected by the raycaster, and checks if any objects are intersected.
+   * If an object is intersected, the application switches to "Selection Mode".
+   * Otherwise, a log message is displayed prompting the user to select an object.
+   * 
+   * @remarks
+   * - The `transformControls` are detached to ensure no objects are being manipulated.
+   * - The `raycaster` is used to detect intersections with draggable objects.
+   * - The global state is updated based on whether an object is intersected.
+   */
+  async onViewMode() {
     //detach objects from transformcontrols
     this.globalObjectInstance.transformControls.detach()
     //objects to intersect with this raycaster (check if click on Object)
@@ -183,6 +218,21 @@ export class InteractionHandler {
     }
   }
 
+    /**
+   * Handles the drawing mode interaction in the application. This method is responsible for:
+   * - Determining intersections with objects in the scene using a raycaster.
+   * - Creating and positioning class instances based on the selected class and intersection point.
+   * - Parsing and executing visualization representation (VizRep) functions for the created class instance.
+   * - Creating and attaching port objects for each port instance of the class instance.
+   * - Managing the global state and rendering updates.
+   *
+   * @remarks
+   * - The method uses raycasting to detect intersections with objects in the scene, specifically the plane object.
+   * - If a valid intersection is found and a metaclass is selected, a new class instance is created and added to the scene.
+   * - The method dynamically evaluates geometry and visualization functions stored in the metamodel. (vizRep)
+   * - If any, for each port instance of the created class instance, a corresponding port object is created, visualized, and attached to the class object.
+   * - The method also handles resetting and updating the global state and rendering flags.
+   */
   async onDrawingMode() {
 
     //objects to intersect with this raycaster
@@ -196,10 +246,8 @@ export class InteractionHandler {
     this.globalObjectInstance.current_class_instance = undefined;
     this.gc.current_instance_object = undefined;
 
-
     //if at leas one intersection
-    // if (this.intersects.length > 0 && this.intersects.length < 2 && this.clickedButton == 0) {
-      if (this.intersects.length > 0 && this.clickedButton == 0) {
+    if (this.intersects.length > 0 && this.clickedButton == 0) {
       // this.intersect = this.intersects[0];
       // find this.globalObjectInstance.plane intersection
       this.intersect = this.intersects.find(intersect => intersect.object == this.globalObjectInstance.plane);
@@ -296,9 +344,22 @@ export class InteractionHandler {
         this.globalStateObject.setState(1)
       }
     }
-
   }
 
+    /**
+   * Handles the interaction logic for creating and managing relation classes in drawing mode.
+   * This method is triggered when the user interacts with the canvas in drawing mode, and it
+   * processes clicks to create, modify, or finalize relation class instances and their associated
+   * roles and bendpoints.
+   *
+   * The method performs the following actions based on the user's interaction:
+   * - Detects intersections with objects in the scene using a raycaster.
+   * - checks if it is allowed to create a relation class instance and or ...
+   *    - Creates relation class instances and their associated roles (`role_from`),
+   *    - Adds bendpoints to relation class instances when clicking on the plane,
+   *    - Finalizes relation class instances when clicking on an element.
+   * - Resets the state or deletes relation class instances on right-click.
+   */
   async onDrawingModeRelationclass() {
     //objects to intersect with this raycaster
     this.objects = this.globalObjectInstance.dragObjects;
@@ -559,6 +620,43 @@ export class InteractionHandler {
       this.globalStateObject.setState(3)
     }
   }
+
+  /**
+   * Handles the simulation mode interaction by detecting intersections with objects
+   * and executing the corresponding simulation function if a button is clicked.
+   *
+   * @async
+   * @method
+   * @returns {Promise<void>} Resolves when the simulation function is executed or no intersection is detected.
+   *
+   * @description
+   * This method performs the following steps:
+   * 1. Sets the objects to be intersected by the raycaster.
+   * 2. Uses the raycaster to detect intersections with the specified objects.
+   * 3. If an intersection is detected and the left button has been clicked (`clickedButton == 0`):
+   *    - Retrieves the intersected object and its associated simulation code.
+   *    - Finds the parent instance of the intersected object using its UUID.
+   *    - Executes the simulation function associated with the button, passing the simulation code
+   *      and the parent instance as arguments.
+   *
+   * @remarks
+   * - The `intersectObjects` method is used with `false` to only test parent objects.
+   * - The `userData.expression` property of the intersected object is expected to contain the simulation code.
+   * - The `instanceUtility.getAnyInstance` method is used to retrieve the parent instance of the intersected object.
+   * - The `simulationUtility.runSimulationFunction` method is responsible for executing the simulation logic.
+   */
+  async onSimulationMode() {
+    this.objects = this.globalObjectInstance.buttonObjects;
+    this.intersects = await this.globalObjectInstance.raycaster.intersectObjects(this.objects, false); //false to only test on parent object
+    if (this.intersects.length > 0 && this.clickedButton == 0) {
+      this.intersect = this.intersects[0];
+      let object: THREE.Mesh = this.intersect.object as unknown as THREE.Mesh;
+      const simulationCode: string = object.userData.expression;
+      const parentInstance = await this.instanceUtility.getAnyInstance(object.parent.uuid);
+      this.simulationUtility.runSimulationFunction(simulationCode, parentInstance);
+    }
+  }
+
 
 
   // //-------------------------------------------------

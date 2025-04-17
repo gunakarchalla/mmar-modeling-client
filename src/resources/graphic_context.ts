@@ -29,6 +29,7 @@ export class GraphicContext {
 
   //this are the objects where the object3ds are stored on call of a gc.function
   object3D: custom_object = {};
+  button3D: custom_object = {};
   labels: custom_object = {};
   rel_from_objects: custom_object = {};
   rel_to_objects: custom_object = {};
@@ -342,17 +343,31 @@ export class GraphicContext {
 
   //this creates a 3D object that is a clickable button
   async graphic_button(object : THREE.Mesh | THREE.Mesh[], expression?: string) {
+    
     //check if THREE.Mesh or THREE.Mesh[] is passed
     if (Array.isArray(object)) {
       for (const obj of object) {
         obj.userData.isButton = true;
         obj.userData.expression = expression;
+
+        // delete the key obj.uuid from object3D
+        delete this.object3D[obj.uuid];
+        // add the object to the button3D object
+        this.button3D[obj.uuid] = obj;
+
       }
     } else {
       object.userData.isButton = true;
       object.userData.expression = expression;
+
+      // delete the key obj.uuid from object3D
+      delete this.object3D[object.uuid];
+      // add the object to the button3D object
+      this.button3D[object.uuid] = object;
     }
+
     console.log("button created with expression: " + expression);
+    console.log(this.button3D);
     return object;
   }
 
@@ -568,6 +583,28 @@ export class GraphicContext {
     return mergedMesh;
   }
 
+  async drawButtons(toAttach : THREE.Mesh) {
+    //this are the objects that have been calculated from the metafunction
+    const loadedObjects: THREE.Mesh[] = Object.values(this.button3D) as unknown as THREE.Mesh[];     // --> should be mesh
+    for (const object of loadedObjects) {
+      toAttach.add(object);
+      this.globalObjectInstance.buttonObjects.push(object);
+    }
+
+    this.button3D = {};
+  }
+
+  async removeButtons(parentMesh : THREE.Mesh) {
+    // for each child of the parentMesh
+    for (const child of parentMesh.children) {
+      // if the child is a button
+      if (child.userData.isButton) {
+        // remove the button from the scene
+        await this.deleteObject(child);
+      }
+    }
+  }
+
   async drawVizRep(position: THREE.Vector3, class_instance: ClassInstance) {
     const mergedMesh = await this.getMergedObjects();
 
@@ -586,6 +623,8 @@ export class GraphicContext {
 
     //set custom variables which are independent of labels
     await this.setCustomVariables(class_instance);
+
+    await this.drawButtons(mergedMesh);
 
     await this.drawLabels(mergedMesh);
 
@@ -609,7 +648,10 @@ export class GraphicContext {
 
 
     await this.removeLabels(classObjectToUpdate);
-    //set custom variables which are independent of labels
+    await this.removeButtons(classObjectToUpdate);
+   
+    await this.drawButtons(classObjectToUpdate);
+
     await this.drawLabels(classObjectToUpdate);
     await this.setScale(mergedMesh, class_instance);
     await this.resetInstance();
@@ -896,6 +938,7 @@ export class GraphicContext {
     this.labels_rel_to_objects = {};
     this.labels_rel_middle_objects = {};
     this.attached_ports = {};
+    this.button3D = {};
   }
 
 
@@ -996,6 +1039,12 @@ export class GraphicContext {
     const index = this.globalObjectInstance.dragObjects.indexOf(object);
     if (index > -1) {
       this.globalObjectInstance.dragObjects.splice(index, 1);
+    }
+
+    //remove from buttonObjects Array
+    const index2 = this.globalObjectInstance.buttonObjects.indexOf(object);
+    if (index2 > -1) {
+      this.globalObjectInstance.buttonObjects.splice(index2, 1);
     }
 
 
