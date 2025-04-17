@@ -64,7 +64,10 @@ export class InteractionHandler {
 
 
   //function that is called on mouse click
-  // see -->  EventListener( 'mousedown' ...
+
+  // ------------------------------------
+  // check sequence diagram in the wiki of mm-ar: https://github.com/MM-AR/mmar/wiki/InteractionHandler
+  // ------------------------------------
   async onDocumentMouseDown(event: MouseEvent) {
 
     this.clickedButton = event.button;
