@@ -7361,8 +7361,8 @@ export class FetchHelper implements ICustomElementViewModel {
         await this.http.fetch(url_, options_);
     }
 
-    // Function to get all uuids from database via get api
-    async getAllUUIDs(): Promise<UUID[]> {
+    // Function to get all file uuids from database via get api
+    async getAllFileUUIDs(): Promise<UUID[]> {
         let url_ = this.baseUrl + "/files/alluuids";
         url_ = url_.replace(/[?&]$/, "");
 

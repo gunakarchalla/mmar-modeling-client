@@ -17,8 +17,8 @@ export class MetaUtility {
     private allFileUUIDS: string[] = [];    // To store all file UUIDs
     private allFiles: Map<UUID, string> = new Map<UUID, string>(); // To store all files
 
-    async getAllUUIDs() {
-        this.allFileUUIDS = await this.fetchHelper.getAllUUIDs();
+    async getAllFileUUIDs() {
+        this.allFileUUIDS = await this.fetchHelper.getAllFileUUIDs();
     }
 
     // Function to get all the files from the database
