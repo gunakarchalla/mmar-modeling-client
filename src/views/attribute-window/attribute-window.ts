@@ -9,6 +9,7 @@ import { Logger } from 'resources/services/logger';
 import { VizrepUpdateChecker } from 'resources/services/vizrep_update_checker';
 import { GraphicContext } from 'resources/graphic_context';
 import { validate as uuidValidate } from 'uuid';
+import { FetchHelper } from 'resources/services/fetchHelper';
 
 export class AttributeWindow {
 
@@ -46,7 +47,8 @@ export class AttributeWindow {
     private metaUtility: MetaUtility,
     private hybridAlgorithmsService: HybridAlgorithmsService,
     private vizrepUpdateChecker: VizrepUpdateChecker,
-    private gc: GraphicContext
+    private gc: GraphicContext,
+    private fetchHelper: FetchHelper
   ) {
   }
 
@@ -55,6 +57,14 @@ export class AttributeWindow {
     this.eventAggregator.subscribe('removeAttributeGui', await this.delayedReset.bind(this));
     this.eventAggregator.subscribe('gltfUploaded', async payload => { await this.gltfUploaded(payload) });
     this.eventAggregator.subscribe('imageUploaded', async payload => { await this.imageUploaded(payload) });
+  }
+
+  async deleteFile(attributeInstance: AttributeInstance) {
+    if (this.isUUID(attributeInstance.value)) {
+      await this.fetchHelper.deleteFileByUUID(attributeInstance.value);
+      const metaAttribute: Attribute = await this.metaUtility.getMetaAttribute(attributeInstance.uuid_attribute);
+      attributeInstance.value = metaAttribute.default_value;
+    }
   }
 
   async gltfUploaded(message) {

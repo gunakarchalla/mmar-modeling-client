@@ -14,6 +14,40 @@ export class MetaUtility {
         private fetchHelper: FetchHelper
     ) { }
 
+    private allFileUUIDS: string[] = [];    // To store all file UUIDs
+    private allFiles: Map<UUID, string> = new Map<UUID, string>(); // To store all files
+
+    async getAllUUIDs() {
+        this.allFileUUIDS = await this.fetchHelper.getAllUUIDs();
+    }
+
+    // Function to get all the files from the database
+    async getAllFiles() {
+        for (const uuid of this.allFileUUIDS) {
+            const file = await this.fetchHelper.getFileByUUID(uuid);
+            let str: string;
+            if (file.type.includes('gltf')) {
+                str = await file.text();
+            } else {
+                str = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const result = typeof reader.result === 'string' ? reader.result : '';
+                        resolve(result);
+                    };
+                    reader.onerror = (error) => {
+                        reject(error);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            this.allFiles.set(uuid, str);
+        }
+    }
+
+    getFileByUUID(uuid: UUID): string {
+        return this.allFiles.get(uuid);
+    }
 
     async getAllSceneTypesFromDB() {
         let sceneTypes: SceneType[] = [];
@@ -30,18 +64,18 @@ export class MetaUtility {
 
     // Function to get current tab context scene type
     async getTabContextSceneType() {
-            let tabContext = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab];
-            let sceneType = tabContext.sceneType;
-            return sceneType;
-        }
+        let tabContext = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab];
+        let sceneType = tabContext.sceneType;
+        return sceneType;
+    }
 
     async getSceneTypeByUUID(uuid: UUID) {
-            return this.globalObjectInstance.sceneTypes.find(sceneType => sceneType.uuid == uuid);
-        }
+        return this.globalObjectInstance.sceneTypes.find(sceneType => sceneType.uuid == uuid);
+    }
 
     // Function to find objects of a specific type within a given object and its children
     findType(object, type, objects) {
-            for(const child of object.children) {
+        for (const child of object.children) {
             if (child.type === type) {
                 objects.push(child);
             }
