@@ -26,7 +26,7 @@ export class MetaUtility {
         for (const uuid of this.allFileUUIDS) {
             const file = await this.fetchHelper.getFileByUUID(uuid);
             let str: string;
-            if (file.type.includes('gltf')) {
+            if (file.type.includes('model/gltf+json') || file.type.includes('application/octet-stream')) {
                 str = await file.text();
             } else {
                 str = await new Promise((resolve, reject) => {
