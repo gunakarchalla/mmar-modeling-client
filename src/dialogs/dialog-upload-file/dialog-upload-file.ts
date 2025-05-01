@@ -4,27 +4,17 @@ import '@uppy/core/dist/style.min.css';
 import '@uppy/dashboard/dist/style.min.css';
 import { AttributeInstance } from "../../../../mmar-global-data-structure";
 import { bindable } from "aurelia";
-import XHRUpload from '@uppy/xhr-upload';
 import { validate as uuidValidate } from 'uuid';
 import { FetchHelper } from 'resources/services/fetchHelper';
+import { EventAggregator } from 'aurelia';
 export class DialogUploadFile {
     private uppy: Uppy;
 
     @bindable private attributeInstance: AttributeInstance;
 
-    updateEndpoint() {
-        // Get the XHRUpload plugin instance
-        const xhrUpload = this.uppy.getPlugin('XHRUpload');
-        if (xhrUpload) {
-            // Update the endpoint and method
-            xhrUpload.setOptions({ endpoint: this.fetchHelper.getFileUploadbyUUIDUrl(this.attributeInstance.value), method: `PATCH` });
-        } else {
-            console.error('XHRUpload plugin is not found.');
-        }
-    }
-
     constructor(
         private fetchHelper: FetchHelper,
+        private eventAggregator: EventAggregator,
     ) { }
 
     async attached() {
@@ -34,21 +24,39 @@ export class DialogUploadFile {
             }
         );
 
-        //Using uppy dashboard and XHRUpload plugin 
-        this.uppy.use(Dashboard, { inline: true, target: '#forUpload', showProgressDetails: true, width: '100%', height: '200px' }).use(XHRUpload, {
-            endpoint: uuidValidate(this.attributeInstance.value) ? this.fetchHelper.getFileUploadbyUUIDUrl(this.attributeInstance.value) : this.fetchHelper.getFileUploadUrl(),
-            method: uuidValidate(this.attributeInstance.value) ? `PATCH` : `POST`,
-            fieldName: 'file',
-            formData: true,
-            responseType: 'text',
-            bundle: true,
+        //Using uppy dashboard
+        this.uppy.use(Dashboard, { inline: true, target: '#forUpload', showProgressDetails: true, width: '100%', height: '200px', hideUploadButton: true });
+    }
 
-            //After the file is uploaded, the response is parsed and the uuid is assigned to the attribute value and the endpoint and method is updated
-            onAfterResponse: (response) => {
-                const res = JSON.parse(response.responseText);
-                this.attributeInstance.value = res["uuid"];
-                this.updateEndpoint();
+    load() {
+        const files = this.uppy.getFiles();
+        const reader = new FileReader();
+
+        if (files) {
+            for (const file of files) {
+                reader.readAsDataURL(file.data);
+                reader.onload = async () => {
+                    const dataURL = reader.result.toString();
+
+                    // Extract base64 data
+                    const base64Data = dataURL.split(',')[1];
+                    const binaryString = window.atob(base64Data);
+                    const byteArray = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        byteArray[i] = binaryString.charCodeAt(i);
+                    }
+
+                    // Create a proper binary File
+                    const newFile = new File([byteArray], file.name, { type: file.type });
+
+                    const response = uuidValidate(this.attributeInstance.value) ? await this.fetchHelper.patchFileByUUID(this.attributeInstance.value, newFile) : await this.fetchHelper.postFile(newFile);
+                    if (response) {
+                        this.eventAggregator.publish('fileUploaded', this.attributeInstance);
+                        this.attributeInstance.value = response.uuid;
+                    }
+                }
+                this.uppy.removeFile(file.id);
             }
-        });
+        }
     }
 }

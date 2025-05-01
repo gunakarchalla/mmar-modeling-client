@@ -2,6 +2,7 @@ import { singleton } from 'aurelia';
 import { UUID } from '../../../mmar-global-data-structure';
 import { GlobalDefinition } from './global_definitions';
 import { Logger } from './services/logger';
+import { MetaUtility } from './services/meta_utility';
 
 @singleton()
 export class GlobalClassObject {
@@ -14,13 +15,14 @@ export class GlobalClassObject {
 
   constructor(
     private globalObjectInstance: GlobalDefinition,
-    private logger: Logger
+    private logger: Logger,
+    private metaUtility: MetaUtility
   ) {
-      this.classNames = [];
-      this.classGeometry = [];
-      this.selectedClass = '';
-      this.selectedClassUUID = '';
-      this.classUUID = [];
+    this.classNames = [];
+    this.classGeometry = [];
+    this.selectedClass = '';
+    this.selectedClassUUID = '';
+    this.classUUID = [];
   }
 
 
@@ -40,7 +42,7 @@ export class GlobalClassObject {
 
   onObjectChange() {
     // push to log file
-      this.logger.log(`The selected object has changed to ${this.getSelectedClass()}`, 'info');
+    this.logger.log(`The selected object has changed to ${this.getSelectedClass()}`, 'info');
   }
   getSelectedClass() {
     return this.selectedClass;
@@ -63,6 +65,7 @@ export class GlobalClassObject {
   getIcon(wholeVizRep: string) {
     let vizRep: string = wholeVizRep;
     let map = '';
+    let next = false;
 
     //if icon defined
     vizRep = wholeVizRep.split("let icon")[1];
@@ -72,6 +75,13 @@ export class GlobalClassObject {
         const string: string = substring;
         if (string.startsWith('data')) {
           map = string;
+        }
+        else if (string.endsWith('getFileByUUIDAndConvertToBase64(')) {
+          next = true;
+        } else if (next) {
+          const str = this.metaUtility.getFileByUUID(string);
+          map = str;
+          break;
         }
       };
     }

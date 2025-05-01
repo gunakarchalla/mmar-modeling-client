@@ -1,7 +1,8 @@
 import { EventAggregator, singleton } from 'aurelia';
 import { GlobalDefinition } from './global_definitions';
 import { InstanceUtility } from './services/instance_utility';
-import { AttributeInstance, ClassInstance, RelationclassInstance } from '../../../mmar-global-data-structure';
+import { AttributeInstance, ClassInstance, RelationclassInstance, UUID } from '../../../mmar-global-data-structure';
+import { MetaUtility } from './services/meta_utility';
 
 @singleton()
 export class ExpressionUtility {
@@ -9,7 +10,8 @@ export class ExpressionUtility {
     constructor(
         private globalObjectInstance: GlobalDefinition,
         private instanceUtility: InstanceUtility,
-        private eventAggregator: EventAggregator
+        private eventAggregator: EventAggregator,
+        private metaUtility: MetaUtility,
     ) {
     }
 
@@ -136,17 +138,17 @@ export class ExpressionUtility {
         const relInstance = await this.instanceUtility.getAnyInstance(relInstanceUUID);
         if (relInstance && relInstance instanceof RelationclassInstance) {
             const role_instance_to = relInstance.role_instance_to;
-            if (role_instance_to){
+            if (role_instance_to) {
                 const classUUID = relInstance.role_instance_to.uuid_has_reference_class_instance;
                 const classInstance = await this.instanceUtility.getAnyInstance(classUUID);
-                if(classInstance instanceof ClassInstance) {
-                return classInstance;
-            } else {
-                return null;
+                if (classInstance instanceof ClassInstance) {
+                    return classInstance;
+                } else {
+                    return null;
+                }
             }
         }
     }
-}
 
     /**
  * Retrieves all relation class instances in the local client where the given instance is the destination (target) based on its UUID and optionally filters them by a specific relation type (metaClassUUID).
@@ -154,10 +156,10 @@ export class ExpressionUtility {
  * @param {string|null} [metaClassUUID=null] - Optional UUID of the relation class type to filter by.
  * @returns {Promise<RelationclassInstance[]>} - A promise resolving to an array of incoming relation class instances. 
  */
-    async getIncomingRelationsByInstanceUUID(instanceUUID: string, metaClassUUID: string | null = null): Promise < RelationclassInstance[] > {
-    const relationClasses = await this.instanceUtility.getIncomingRelationsFromInstance(instanceUUID, metaClassUUID);
-    return relationClasses;
-}
+    async getIncomingRelationsByInstanceUUID(instanceUUID: string, metaClassUUID: string | null = null): Promise<RelationclassInstance[]> {
+        const relationClasses = await this.instanceUtility.getIncomingRelationsFromInstance(instanceUUID, metaClassUUID);
+        return relationClasses;
+    }
 
     /**
      * Retrieves all relation class instances in the local client where the given instance is the source (origin) based on its UUID and optionally filters them by a specific relation type (metaClassUUID).
@@ -166,10 +168,10 @@ export class ExpressionUtility {
      * @param {string|null} [metaClassUUID=null] - Optional UUID of the relation class type to filter by.
      * @returns {Promise<RelationclassInstance[]>} - A promise resolving to an array of outgoing relation class instances. 
      */
-    async getOutgoingRelationsByInstanceUUID(instanceUUID: string, metaClassUUID: string | null = null): Promise < RelationclassInstance[] > {
-    const relationClasses = await this.instanceUtility.getOutgoingRelationsFromInstance(instanceUUID, metaClassUUID);
-    return relationClasses;
-}
+    async getOutgoingRelationsByInstanceUUID(instanceUUID: string, metaClassUUID: string | null = null): Promise<RelationclassInstance[]> {
+        const relationClasses = await this.instanceUtility.getOutgoingRelationsFromInstance(instanceUUID, metaClassUUID);
+        return relationClasses;
+    }
 
     /**
      * Checks if any type of instance in the local client has both incoming and outgoing relations (i.e. is connected).
@@ -177,39 +179,51 @@ export class ExpressionUtility {
      * @param {string} instanceUUID - The UUID of any type of instance. 
      * @returns {Promise<boolean>} - A promise resolving to "true" if the instance is connected, or "false" otherwise. 
      */
-    async isConnected(instanceUUID: string): Promise < boolean > {
-    const incomingRelations = await this.instanceUtility.getIncomingRelationsFromInstance(instanceUUID);
-    const outgoingRelations = await this.instanceUtility.getOutgoingRelationsFromInstance(instanceUUID);
-    return incomingRelations.length > 0 && outgoingRelations.length > 0;
-}
+    async isConnected(instanceUUID: string): Promise<boolean> {
+        const incomingRelations = await this.instanceUtility.getIncomingRelationsFromInstance(instanceUUID);
+        const outgoingRelations = await this.instanceUtility.getOutgoingRelationsFromInstance(instanceUUID);
+        return incomingRelations.length > 0 && outgoingRelations.length > 0;
+    }
 
     /**
      *  Checks if there is a visual update
      */
     async checkForVisualizationUpdate() {
-    //wait while the vizrep update is not ready since it is running in another thread
-    while (!this.globalObjectInstance.readyForVizRepUpdate) {
-        // wait 100ms
-        await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-    this.globalObjectInstance.readyForVizRepUpdate = false;
-    this.eventAggregator.publish('checkForVizRepUpdate');
-}
-
-    /**
-         *  Checks if there is a visual update regarding a specific AttributeInstance
-         */
-    async checkForVisualizationUpdateByAttributeUUID(instanceUUID: string, metaAttributeUUID: string) {
-    const instance = await this.instanceUtility.getAnyInstance(instanceUUID);
-    const attributeInstance = await this.instanceUtility.getAttributeInstanceFromAnyInstance(metaAttributeUUID, instance.uuid, "uuid");
-    if (attributeInstance) {
         //wait while the vizrep update is not ready since it is running in another thread
         while (!this.globalObjectInstance.readyForVizRepUpdate) {
             // wait 100ms
             await new Promise((resolve) => setTimeout(resolve, 20));
         }
         this.globalObjectInstance.readyForVizRepUpdate = false;
-        this.eventAggregator.publish('checkForVizRepUpdateByAttributeInstance', attributeInstance);
+        this.eventAggregator.publish('checkForVizRepUpdate');
     }
-}
+
+    /**
+         *  Checks if there is a visual update regarding a specific AttributeInstance
+         */
+    async checkForVisualizationUpdateByAttributeUUID(instanceUUID: string, metaAttributeUUID: string) {
+        const instance = await this.instanceUtility.getAnyInstance(instanceUUID);
+        const attributeInstance = await this.instanceUtility.getAttributeInstanceFromAnyInstance(metaAttributeUUID, instance.uuid, "uuid");
+        if (attributeInstance) {
+            //wait while the vizrep update is not ready since it is running in another thread
+            while (!this.globalObjectInstance.readyForVizRepUpdate) {
+                // wait 100ms
+                await new Promise((resolve) => setTimeout(resolve, 20));
+            }
+            this.globalObjectInstance.readyForVizRepUpdate = false;
+            this.eventAggregator.publish('checkForVizRepUpdateByAttributeInstance', attributeInstance);
+        }
+    }
+
+    getFileByUUIDAndConvertToBase64(fileUUID: UUID): string {
+        // const file = await this.fetchHelper.getFileByUUID(fileUUID);
+        const str = this.metaUtility.getFileByUUID(fileUUID);
+        return str;
+    }
+
+    getBase64FilebyUUID(fileUUID: UUID): string {
+        // const file = await this.fetchHelper.getFileByUUID(fileUUID);
+        const str = this.metaUtility.getFileByUUID(fileUUID);
+        return str;
+    }
 }

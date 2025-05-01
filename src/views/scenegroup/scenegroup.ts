@@ -21,10 +21,10 @@ export class Scenegroup {
     private sceneTypes: SceneType[] = [];
     private sceneInstances: SceneInstance[] = [];
     private tree = [];
-        // used in html
+    // used in html
     private finalTree = [];
     private clickCounter = 0;
-     @bindable openSceneGroup = false;
+    @bindable openSceneGroup = false;
     @bindable dialogCreateNewScene = null;
     @bindable dialogLoadingWindow = null;
 
@@ -70,6 +70,9 @@ export class Scenegroup {
         // open dialogLoadingWindow
         this.dialogHelper.openDialog(this.dialogLoadingWindow, 'openDialogLoadingWindow', {});
 
+        await this.metaUtility.getAllFileUUIDs();
+        await this.metaUtility.getAllFiles();
+
         // fetch all sceneTypes from the database
         await this.metaUtility.getAllSceneTypesFromDB().then(async (sceneTypes) => {
             // assign the fetched sceneTypes to the sceneTypes array
@@ -82,7 +85,7 @@ export class Scenegroup {
             this.tree = this.sceneTypes;
             // assign the sceneTypes array to the globalObjectInstance
             this.globalObjectInstance.sceneTypes = this.sceneTypes;
-            
+
 
             // for each sceneType in the sceneTypes array
             for (const sceneType of this.sceneTypes) {
