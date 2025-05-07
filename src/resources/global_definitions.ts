@@ -29,6 +29,7 @@ export class GlobalDefinition {
   mousePointer3d: THREE.Mesh;
   render: boolean;
   dragObjects: THREE.Mesh[];  updateLinesArray: Line2[];
+  buttonObjects: THREE.Mesh[];
   objectScaled: boolean;
   allPositions: number[];
   allRotations: number[];
@@ -52,6 +53,8 @@ export class GlobalDefinition {
   threeDimensional: boolean;
   orbitControls2d: OrbitControls;
   orbitControls3d: OrbitControls;
+  readyForVizRepUpdate: boolean;
+  runMechanism: boolean;
 
   constructor() {
     
@@ -76,6 +79,7 @@ export class GlobalDefinition {
     this.render = true;
     this.plane = new THREE.Mesh();
     this.dragObjects = [];
+    this.buttonObjects = [];
     this.current_meta_port = undefined;
     this.attribute_instances = [];
     this.role_instances = [];
@@ -86,6 +90,8 @@ export class GlobalDefinition {
     this.importSceneInstances = [];
     this.accessToken = "";
     this.threeDimensional = false;
+    this.readyForVizRepUpdate = true;
+    this.runMechanism = false;
   }
   
       

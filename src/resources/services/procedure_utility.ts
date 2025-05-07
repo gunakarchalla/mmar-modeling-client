@@ -1,9 +1,11 @@
 import { MetaUtility } from './meta_utility';
 import { singleton } from "aurelia";
-import { Procedure } from "../../../../mmar-global-data-structure";
+import { AttributeInstance, Procedure } from "../../../../mmar-global-data-structure";
 import { FetchHelper } from "./fetchHelper";
 import { GlobalDefinition } from "resources/global_definitions";
 import { ExpressionUtility } from 'resources/expression_utility';
+import { VizrepUpdateChecker } from './vizrep_update_checker';
+import { InstanceUtility } from './instance_utility';
 
 /**
  * Utility class for handling procedures.
@@ -25,8 +27,8 @@ export class ProcedureUtility {
         private globalObjectInstance: GlobalDefinition,
         private fetchHelper: FetchHelper,
         private metaUtility: MetaUtility,
-        private expression: ExpressionUtility
-    ) { }
+        private expression: ExpressionUtility,
+        private updateChecker: VizrepUpdateChecker) { }
 
     /**
      * Retrieves general procedures.
@@ -37,7 +39,6 @@ export class ProcedureUtility {
         if (Array.isArray(response)) {
             this.procedures = response.map(item => Procedure.fromJS(item) as Procedure);
         }
-        console.error(this.procedures);
         return this.procedures;
     }
 
@@ -51,7 +52,6 @@ export class ProcedureUtility {
         if (Array.isArray(response)) {
             this.assignedProcedures = response.map(item => Procedure.fromJS(item) as Procedure);
         }
-        console.error(this.assignedProcedures);
         return this.assignedProcedures;
     }
 
@@ -63,12 +63,22 @@ export class ProcedureUtility {
     async execute(generalAlgorithmName: string, specificAlgorithmName: string): Promise<void> {
         if (await this.isValidAlgorithmName(generalAlgorithmName)) {
             const generalProcedureCode = await this.getProcedureCodeByName(this.procedures, generalAlgorithmName);
-            if (generalProcedureCode) await this.runProcedureFunction(generalProcedureCode);
+            if (generalProcedureCode) {
+                // run the general procedure
+                await this.runProcedureFunction(generalProcedureCode);
+                // after running the general procedure, check for visualization updates
+                //await this.updateChecker.checkForVisualizationUpdate();
+            }
         }
 
         if (await this.isValidAlgorithmName(specificAlgorithmName)) {
             const specificProcedureCode = await this.getProcedureCodeByName(this.assignedProcedures, specificAlgorithmName);
-            if (specificProcedureCode) await this.runProcedureFunction(specificProcedureCode);
+            if (specificProcedureCode) {
+                // run the specific procedure
+                await this.runProcedureFunction(specificProcedureCode);
+                // after running the specific procedure, check for visualization updates
+                //await this.updateChecker.checkForVisualizationUpdate();
+            }
         }
     }
 

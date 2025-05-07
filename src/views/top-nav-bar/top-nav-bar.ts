@@ -1,4 +1,4 @@
-import { bindable } from "aurelia";
+import { bindable, EventAggregator } from "aurelia";
 import { DialogHelper } from "resources/dialog_helper";
 
 export class TopNavBar {
@@ -7,8 +7,15 @@ export class TopNavBar {
 
    constructor(
       //used directly in html
-      private dialogHelper: DialogHelper
+      private dialogHelper: DialogHelper,
+      private eventAggregator: EventAggregator
    ) { }
+
+   attached() {
+      this.eventAggregator.subscribe("ctrlPlusSPressed", async () => {
+         this.dialogHelper.openDialog(this.dialogSaveAs, "openDialogSaveAs", {});
+      });
+   }
 
    fileMenu = {
       name: "File",
@@ -147,4 +154,24 @@ export class TopNavBar {
       ],
       open: false
    };
+
+   simulationMenu = {
+      name: "Simulation",
+      icon: "play_circle",
+      open: false,
+      items: [
+         {
+            label: "Enter Simulation Mode",
+            icon: "play_arrow",
+            disabled: false
+         },
+         {
+            label: "Exit Simulation Mode",
+            icon: "stop",
+            disabled: false
+         }
+      ]
+   }
+      
+
 }

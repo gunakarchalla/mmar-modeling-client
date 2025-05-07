@@ -1,10 +1,11 @@
 import { MathUtility } from './services/math_utility';
 import { IntervalHandler } from './interval_handler';
 import { GlobalSelectedObject } from './global_selected_object';
-import { singleton } from 'aurelia';
+import { EventAggregator, singleton } from 'aurelia';
 import { GlobalDefinition } from './global_definitions';
 import { DeletionHandler } from './deletion_handler';
 import * as Mousetrap from 'mousetrap';
+import { DialogHelper } from './dialog_helper';
 
 @singleton()
 export class KeyboardHandler {
@@ -12,10 +13,9 @@ export class KeyboardHandler {
   constructor(
     private globalObjectInstance: GlobalDefinition,
     private globalSelectedObject: GlobalSelectedObject,
-    private intervalHandler: IntervalHandler,
     private deletionHandler: DeletionHandler,
-    private mathUtility: MathUtility
-  ) {
+    private mathUtility: MathUtility,
+    private eventAggregator: EventAggregator) {
 
 
     Mousetrap.bind('del', async () =>  {
@@ -52,6 +52,12 @@ export class KeyboardHandler {
         this.globalObjectInstance.render = true;
     });
 
+     //if ctrl + s is pressed, save the model
+    Mousetrap.bind('ctrl+s', (e) => {
+      e.preventDefault();
+      console.log('ctrl+s pressed');
+      this.eventAggregator.publish('ctrlPlusSPressed', {});
+    });
    
 
   }

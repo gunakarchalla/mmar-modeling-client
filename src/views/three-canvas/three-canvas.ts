@@ -24,6 +24,7 @@ export class ThreeCanvas {
     //set intervall
     setInterval(() => {
       this.globalObjectInstance.render = true;
+      this.globalObjectInstance.runMechanism = true;
     }, 1000);
 
 

@@ -1,5 +1,7 @@
-import { bindable, customElement } from 'aurelia';
+import { bindable, customElement, EventAggregator } from 'aurelia';
 import { DialogHelper } from 'resources/dialog_helper';
+import { GlobalSelectedObject } from 'resources/global_selected_object';
+import { GlobalStateObject } from 'resources/global_state_object';
 import { PersistencyHandler } from 'resources/persistency_handler';
 
 @customElement('menu-entry')
@@ -25,7 +27,10 @@ export class MenuEntry {
 
    constructor(
       private dialogHelper: DialogHelper,
-      private persistencyHandler: PersistencyHandler
+      private persistencyHandler: PersistencyHandler,
+      private globalStateObject: GlobalStateObject,
+      private globalSelectedObject: GlobalSelectedObject,
+      private eventAggregator: EventAggregator
    ) {
    }
 
@@ -59,6 +64,20 @@ export class MenuEntry {
 
       if (item.label === "Export Open Models") {
          await this.persistencyHandler.saveAllOpenModelInstancesToTextfile();
+      }
+
+      if (item.label === "Enter Simulation Mode") {
+         this.globalSelectedObject.removeObject();
+         
+         this.globalStateObject.setState(4);
+
+         //remove attribute gui
+         this.eventAggregator.publish('removeAttributeGui', { remove: true });
+      }
+
+      if (item.label === "Exit Simulation Mode") {
+         this.globalSelectedObject.removeObject();
+         this.globalStateObject.setState(1);
       }
    }
 }

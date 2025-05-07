@@ -29,11 +29,13 @@ export class GraphicContext {
 
   //this are the objects where the object3ds are stored on call of a gc.function
   object3D: custom_object = {};
+  button3D: custom_object = {};
   labels: custom_object = {};
   rel_from_objects: custom_object = {};
   rel_to_objects: custom_object = {};
   labels_rel_from_objects: custom_object = {};
   labels_rel_to_objects: custom_object = {};
+  labels_rel_middle_objects: custom_object = {};
   map = '';
   attached_ports: custom_object = {};
   return_instances: ObjectInstance[];
@@ -58,6 +60,7 @@ export class GraphicContext {
     this.rel_to_objects = {};
     this.labels_rel_from_objects = {};
     this.labels_rel_to_objects = {};
+    this.labels_rel_middle_objects = {};
     this.return_instances = [];
     this.custom_variables = {};
 
@@ -65,14 +68,21 @@ export class GraphicContext {
 
 
   async setVariable(name: string, value: any, instance_adaptable: boolean) {
-    if (this.current_instance_object && instance_adaptable && this.current_instance_object.custom_variables ) {
+    if (this.current_instance_object && instance_adaptable && this.current_instance_object.custom_variables) {
 
-      
-      this.custom_variables[name] = {
-        "value": this.current_instance_object.custom_variables[name].value,
-        "instance_adaptable": instance_adaptable,
-        "user_locked": this.current_instance_object.custom_variables[name].user_locked == true ? true : false
-      };
+      if (this.current_instance_object.custom_variables[name]) {
+        this.custom_variables[name] = {
+          "value": this.current_instance_object.custom_variables[name].value,
+          "instance_adaptable": instance_adaptable,
+          "user_locked": this.current_instance_object.custom_variables[name].user_locked == true ? true : false
+        };
+      } else {
+        this.custom_variables[name] = {
+          "value": value,
+          "instance_adaptable": instance_adaptable,
+          "user_locked": false
+        };
+      }
       this.current_instance_object.custom_variables[name] = this.custom_variables[name];
       this.logger.log('variable ' + name + ' value set to instance value: ' + this.custom_variables[name].value, 'info');
     }
@@ -151,7 +161,7 @@ export class GraphicContext {
 
     }
 
-    const box = new THREE.Mesh(geometry, material);
+    const box : THREE.Mesh = new THREE.Mesh(geometry, material);
     box.position.x = x_rel ? x_rel : box.position.x;
     box.position.y = y_rel ? y_rel : box.position.y;
     box.position.z = z_rel ? z_rel : box.position.z;
@@ -189,7 +199,7 @@ export class GraphicContext {
       material.color.set('white');
     }
 
-    const plane = new THREE.Mesh(geometry, material);
+    const plane : THREE.Mesh = new THREE.Mesh(geometry, material);
     //set position
     plane.position.x = x_rel ? x_rel : plane.position.x;
     plane.position.y = y_rel ? y_rel : plane.position.y;
@@ -229,7 +239,7 @@ export class GraphicContext {
       material.color.set('white');
     }
 
-    const sphere = new THREE.Mesh(geometry, material);
+    const sphere : THREE.Mesh = new THREE.Mesh(geometry, material);
     //set position
     sphere.position.x = x_rel ? x_rel : sphere.position.x;
     sphere.position.y = y_rel ? y_rel : sphere.position.y;
@@ -244,6 +254,9 @@ export class GraphicContext {
   //load a predefined gltf to the object
   //!! this must load async in the vizRep
   async graphic_gltf(objectString: string, x_rel?: number, y_rel?: number, z_rel?: number) {
+
+    // return array
+    const meshes : THREE.Mesh[] = [];
 
     //we define the loader
     const loader = new GLTFLoader();
@@ -269,14 +282,16 @@ export class GraphicContext {
 
       for (const mesh of objects) {
         //move the object by the relative position
-      mesh.position.x = x_rel ? mesh.position.x + x_rel : mesh.position.x;
-      mesh.position.y = y_rel ? mesh.position.y + y_rel : mesh.position.y;
-      mesh.position.z = z_rel ? mesh.position.z + z_rel : mesh.position.z;
-        
+        mesh.position.x = x_rel ? mesh.position.x + x_rel : mesh.position.x;
+        mesh.position.y = y_rel ? mesh.position.y + y_rel : mesh.position.y;
+        mesh.position.z = z_rel ? mesh.position.z + z_rel : mesh.position.z;
+
         this.object3D[mesh.uuid] = mesh;
+        meshes.push(mesh);
       }
 
     });
+    return meshes;
   }
 
 
@@ -326,6 +341,36 @@ export class GraphicContext {
     return textMesh;
   }
 
+  //this creates a 3D object that is a clickable button
+  async graphic_button(object : THREE.Mesh | THREE.Mesh[], expression?: string) {
+    
+    //check if THREE.Mesh or THREE.Mesh[] is passed
+    if (Array.isArray(object)) {
+      for (const obj of object) {
+        obj.userData.isButton = true;
+        obj.userData.expression = expression;
+
+        // delete the key obj.uuid from object3D
+        delete this.object3D[obj.uuid];
+        // add the object to the button3D object
+        this.button3D[obj.uuid] = obj;
+
+      }
+    } else {
+      object.userData.isButton = true;
+      object.userData.expression = expression;
+
+      // delete the key obj.uuid from object3D
+      delete this.object3D[object.uuid];
+      // add the object to the button3D object
+      this.button3D[object.uuid] = object;
+    }
+
+    console.log("button created with expression: " + expression);
+    console.log(this.button3D);
+    return object;
+  }
+
   //this creates a 3D line
   //this was changed in July21 to Line2 since we can create thick lines with Line2
   //function setPos was also updated
@@ -360,6 +405,9 @@ export class GraphicContext {
     await line.computeLineDistances();
     line.scale.set(1, 1, 1);
     this.globalObjectInstance.scene.add(line);
+
+    //set middle pos variable
+    line.userData.midPoint = new THREE.Vector3(0, 0, 0);
 
 
     //set uuid of mesh to class_instance_uuid
@@ -464,7 +512,7 @@ export class GraphicContext {
     this.labels_rel_from_objects[object.uuid] = object;
   }
   async rel_graphic_text_middle(object: THREE.Mesh) {
-    this.logger.log("todo : --> graphic_text_middle", "info");
+    this.labels_rel_middle_objects[object.uuid] = object;
   }
   async rel_graphic_text_to(object: THREE.Mesh) {
     this.labels_rel_to_objects[object.uuid] = object;
@@ -535,6 +583,28 @@ export class GraphicContext {
     return mergedMesh;
   }
 
+  async drawButtons(toAttach : THREE.Mesh) {
+    //this are the objects that have been calculated from the metafunction
+    const loadedObjects: THREE.Mesh[] = Object.values(this.button3D) as unknown as THREE.Mesh[];     // --> should be mesh
+    for (const object of loadedObjects) {
+      toAttach.add(object);
+      this.globalObjectInstance.buttonObjects.push(object);
+    }
+
+    this.button3D = {};
+  }
+
+  async removeButtons(parentMesh : THREE.Mesh) {
+    // for each child of the parentMesh
+    for (const child of parentMesh.children) {
+      // if the child is a button
+      if (child.userData.isButton) {
+        // remove the button from the scene
+        await this.deleteObject(child);
+      }
+    }
+  }
+
   async drawVizRep(position: THREE.Vector3, class_instance: ClassInstance) {
     const mergedMesh = await this.getMergedObjects();
 
@@ -553,6 +623,8 @@ export class GraphicContext {
 
     //set custom variables which are independent of labels
     await this.setCustomVariables(class_instance);
+
+    await this.drawButtons(mergedMesh);
 
     await this.drawLabels(mergedMesh);
 
@@ -576,7 +648,10 @@ export class GraphicContext {
 
 
     await this.removeLabels(classObjectToUpdate);
-    //set custom variables which are independent of labels
+    await this.removeButtons(classObjectToUpdate);
+   
+    await this.drawButtons(classObjectToUpdate);
+
     await this.drawLabels(classObjectToUpdate);
     await this.setScale(mergedMesh, class_instance);
     await this.resetInstance();
@@ -668,7 +743,7 @@ export class GraphicContext {
             textObject.userData.custom_variables[key] = this.globalObjectInstance.current_port_instance.custom_variables[key];
           }
         }
-        
+
         parentObject.userData.custom_variables = this.globalObjectInstance.current_port_instance.custom_variables;
       }
 
@@ -684,9 +759,9 @@ export class GraphicContext {
     if (object.userData.Label) {
 
       //if there are labels on the object, we delete them
-      for (const label of object.userData.Label) {
+      await Promise.all(object.userData.Label.map(async (label) => {
         await this.deleteObject(label);
-      };
+      }));
       //we remove labels from parent object userData
       object.userData.Label = [];
     }
@@ -736,17 +811,53 @@ export class GraphicContext {
     if (textObject.parent.type == "Line2") {
       this.globalObjectInstance.dragObjects.unshift(textObject)
     }
+
+    //for line middle text if there is a position stored on the parent, set position to that stored position
+    if (toAttach.userData["midPoint"]) {
+      textObject.position.x = toAttach.userData["midPoint"].x;
+      textObject.position.y = toAttach.userData["midPoint"].y;
+      textObject.position.z = toAttach.userData["midPoint"].z;
+    }
+
+    // Define getter and setter for midPoint
+    //like that, the position of the text is bound directly to the userData.midPoint of the parent object (line)
+    Object.defineProperty(toAttach.userData, 'midPoint', {
+      get() {
+        return this._midPoint;
+      },
+      set(value) {
+        this._midPoint = value;
+        textObject.position.x = value.x;
+        textObject.position.y = value.y;
+        textObject.position.z = value.z;
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    // Initialize midPoint if it exists
+    if (toAttach.userData._midPoint) {
+      textObject.position.x = toAttach.userData._midPoint.x;
+      textObject.position.y = toAttach.userData._midPoint.y;
+      textObject.position.z = toAttach.userData._midPoint.z;
+    }
   }
 
   async drawVizRep_rel() {
-    await this.rel_merge_from_objects();
     const uuid = await this.instanceUtility.get_current_class_instance_uuid();
     let obj = this.object3D[uuid];
-    obj.add(Object.values(this.rel_from_objects)[0]);
 
-    await this.rel_merge_to_objects()
-    this.object3D[await this.instanceUtility.get_current_class_instance_uuid()].add(Object.values(this.rel_to_objects)[0]);
+    // if there is a from object, add it to the object
+    if (Object.values(this.rel_from_objects).length > 0) {
+      await this.rel_merge_from_objects();
+      obj.add(Object.values(this.rel_from_objects)[0]);
+    }
 
+    // if there is a to object, add it to the object
+    if (Object.values(this.rel_to_objects).length > 0) {
+      await this.rel_merge_to_objects();
+      obj.add(Object.values(this.rel_to_objects)[0]);
+    }
 
     for (const object of Object.values(this.labels_rel_from_objects)) {
       const obj: THREE.Mesh = object as THREE.Mesh;
@@ -757,6 +868,12 @@ export class GraphicContext {
       const obj: THREE.Mesh = object as THREE.Mesh;
       await this.attachText(obj, this.object3D[await this.instanceUtility.get_current_class_instance_uuid()].children[1]);
     };
+
+    for (const object of Object.values(this.labels_rel_middle_objects)) {
+      const obj: THREE.Mesh = object as THREE.Mesh;
+      // attach it directly to the line
+      await this.attachText(obj, this.object3D[await this.instanceUtility.get_current_class_instance_uuid()]);
+    }
 
 
     //reset gc
@@ -786,9 +903,9 @@ export class GraphicContext {
     correspondingSceneObject.material = line.material;
 
     // Update the labels of the relation
+    await this.removeLabels(correspondingSceneObject);
     await this.removeLabels(correspondingSceneObject.children[0]);
     await this.removeLabels(correspondingSceneObject.children[1]);
-    await this.removeLabels(correspondingSceneObject);
 
     // Draw the labels of the fromObject
     for (const object of Object.values(this.labels_rel_from_objects)) {
@@ -802,7 +919,11 @@ export class GraphicContext {
       await this.attachText(obj, correspondingSceneObject.children[1]);
     }
 
-    // TODO: Add  here the label for the middle of the relation when implemented
+    // Draw the labels of the middleObject
+    for (const object of Object.values(this.labels_rel_middle_objects)) {
+      const obj: THREE.Mesh = object as THREE.Mesh;
+      await this.attachText(obj, correspondingSceneObject);
+    }
 
     // Reset instance
     await this.resetInstance();
@@ -815,7 +936,9 @@ export class GraphicContext {
     this.rel_to_objects = {};
     this.labels_rel_from_objects = {};
     this.labels_rel_to_objects = {};
+    this.labels_rel_middle_objects = {};
     this.attached_ports = {};
+    this.button3D = {};
   }
 
 
@@ -909,13 +1032,19 @@ export class GraphicContext {
 
     //remove children
     for (const child of object.children) {
-      this.deleteObject(child as THREE.Mesh);
+      await this.deleteObject(child as THREE.Mesh);
     }
 
     //remove from dragObjects Array
     const index = this.globalObjectInstance.dragObjects.indexOf(object);
     if (index > -1) {
       this.globalObjectInstance.dragObjects.splice(index, 1);
+    }
+
+    //remove from buttonObjects Array
+    const index2 = this.globalObjectInstance.buttonObjects.indexOf(object);
+    if (index2 > -1) {
+      this.globalObjectInstance.buttonObjects.splice(index2, 1);
     }
 
 
@@ -960,5 +1089,4 @@ export class GraphicContext {
     const vizRepFunction = await this.metaUtility.parseMetaFunction(vizRepCode);
     await vizRepFunction(this);
   }
-
 }

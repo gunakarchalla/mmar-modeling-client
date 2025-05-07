@@ -1,5 +1,6 @@
 <import from="../menu-entry/menu-entry"></import>
 <import from="../../dialogs/dialog-algorithm/dialog-algorithm"></import>
+<import from="../../dialogs/dialog-save-as/dialog-save-as"></import>
 
 <div>
   <mdc-top-app-bar style="position: relative; background: transparent; color: #000;  z-index: 2;">
@@ -14,14 +15,18 @@
         <menu-entry menu-entry.bind="editMenu"></menu-entry>
         <menu-entry menu-entry.bind="diagramMenu"></menu-entry>
         <menu-entry menu-entry.bind="settingsMenu"></menu-entry>
-        
+
         <!-- Open Dialog for Algorithms -->
-        <button mdc-button mdc-tooltipp="Algorithms" click.trigger="dialogHelper.openDialog(dialog, 'openAlgorithmDialog', {})">
+        <button mdc-button mdc-tooltipp="Algorithms"
+          click.trigger="dialogHelper.openDialog(dialog, 'openAlgorithmDialog', {})">
           <mdc-icon>play_arrow</mdc-icon>Algorithms
         </button>
         <!-- End Dialog for Algorithms -->
 
-         
+        <!-- menu entry for Simulation Mode -->
+        <menu-entry menu-entry.bind="simulationMenu"></menu-entry>
+
+
 
       </mdc-top-app-bar-section>
 
@@ -33,6 +38,12 @@
   <!-- Dialog for algorithms -->
   <mdc-dialog view-model.ref="dialog">
     <dialog-algorithm></dialog-algorithm>
+  </mdc-dialog>
+
+  <!-- Dialog for Saving -->
+   <!-- This is initialized here and in the menus (here to call by ctrl+s keys) -->
+  <mdc-dialog view-model.ref="dialogSaveAs">
+    <dialog-save-as></dialog-save-as>
   </mdc-dialog>
 
 </div>

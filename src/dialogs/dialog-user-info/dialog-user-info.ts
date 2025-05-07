@@ -6,6 +6,7 @@ export class DialogUserInfo{
     viewMode = 'ViewMode';
     drawingMode = 'DrawingMode (insert)';
     drawingModeRelationClass = 'DrawingModeRelationClass (line)';
+    simulationMode = 'SimulationMode';
 
     
     constructor(

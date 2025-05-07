@@ -2,7 +2,7 @@ import { FetchHelper } from './fetchHelper';
 import { plainToInstance } from 'class-transformer';
 import { MetaUtility } from './meta_utility';
 import { GlobalDefinition } from 'resources/global_definitions';
-import { UUID, SceneInstance, ClassInstance, RelationclassInstance, AttributeInstance, PortInstance } from '../../../../mmar-global-data-structure';
+import { UUID, SceneInstance, ClassInstance, RelationclassInstance, AttributeInstance, PortInstance, ObjectInstance } from '../../../../mmar-global-data-structure';
 import { singleton, EventAggregator } from 'aurelia';
 import * as THREE from 'three';
 import { Logger } from './logger';
@@ -134,6 +134,14 @@ export class InstanceUtility {
         return instancesOfClass;
     }
 
+    // retrieves all class and relation class instances of the open scene instance 
+    async getAllClassInstancesFromOpenSceneInstance() {
+        let sceneInstance = await this.getTabContextSceneInstance();
+        let instances = sceneInstance.class_instances || [];
+        instances = instances.concat(sceneInstance.relationclasses_instances || []);
+        return instances;
+    }
+
     async getAllRelationClassInstances() {
         let relationclassInstances: RelationclassInstance[] = [];
         let sceneInstances = await this.getAllSceneInstancesFromLocal();
@@ -159,8 +167,8 @@ export class InstanceUtility {
 
     async getAllSceneInstancesFromLocal() {
         let sceneInstances: SceneInstance[] = [];
-        let tabContextSceneInstance = await this.getTabContextSceneInstance();
-        sceneInstances.push(tabContextSceneInstance);
+        // let tabContextSceneInstance = await this.getTabContextSceneInstance();
+        // sceneInstances.push(tabContextSceneInstance);
         for (const sceneType of this.globalObjectInstance.sceneTree) {
             let children = sceneType.children;
             for (const sceneInstance of children) {
@@ -333,6 +341,31 @@ export class InstanceUtility {
         return attributeInstance;
     }
 
+    /**
+ * Collects all attribute instances from an instanceObject recursively.
+ * This also includes attribute instances from nested objects.
+ * @param obj - The object to collect attribute instances from.
+ * @returns A promise that resolves to an array of attribute instances.
+ */
+    async getAllAttributeInstancesFromObjectInstanceRecursively(obj: ObjectInstance): Promise<AttributeInstance[]> {
+        const attributeInstances: AttributeInstance[] = [];
+
+        if (Array.isArray(obj)) {
+            for (const item of obj) {
+                attributeInstances.push(...(await this.getAllAttributeInstancesFromObjectInstanceRecursively(item)));
+            }
+        } else if (obj && typeof obj === 'object') {
+            for (const key of Object.keys(obj)) {
+                if (key === 'attribute_instance' && Array.isArray(obj[key])) {
+                    attributeInstances.push(...obj[key]);
+                } else {
+                    attributeInstances.push(...(await this.getAllAttributeInstancesFromObjectInstanceRecursively(obj[key])));
+                }
+            }
+        }
+        return attributeInstances;
+    }
+
     // get an attributeInstance based on the UUID or the name of the meta attribute and the UUID of a portInstance
     async getAttributeInstanceFromPortInstance(searchValue: string | UUID, portInstanceUUID: UUID, searchBy: 'uuid' | 'name') {
         let attributeInstance: AttributeInstance = undefined;
@@ -409,35 +442,67 @@ export class InstanceUtility {
         return attributeInstance;
     }
 
-    // get an instance of any type based on the UUID
-    // this will search the types sceneInstance, classInstance, relationclassInstance, portInstance
     async getAnyInstance(uuid: UUID) {
-        let instance: SceneInstance | ClassInstance | RelationclassInstance | PortInstance = undefined;
-        let instances = [];
+        let instance: SceneInstance | ClassInstance | RelationclassInstance | PortInstance | AttributeInstance;
+        // Check in scene instances first
+        instance = (await this.getAllSceneInstancesFromLocal()).find(inst => inst.uuid === uuid);
+        if (instance) return instance;
 
-        // Get instances from the first source.
-        instances = await this.getAllSceneInstancesFromLocal();
-        instance = instances.find(instance => instance.uuid === uuid);
+        // Check in class instances
+        instance = (await this.getAllClassInstances()).find(inst => inst.uuid === uuid);
+        if (instance) return instance;
 
-        // If not found, check the next source.
-        if (!instance) {
-            instances = await this.getAllClassInstances();
-            instance = instances.find(instance => instance.uuid === uuid);
+        // Check in relation class instances
+        instance = (await this.getAllRelationClassInstances()).find(inst => inst.uuid === uuid);
+        if (instance) return instance;
+
+        // Check in port instances
+        instance = (await this.getAllPortInstances()).find(inst => inst.uuid === uuid);
+        if (instance) return instance;
+
+        // Check in the current scene's attribute instances
+        let currentSceneInstance = await this.getTabContextSceneInstance();
+        if (currentSceneInstance) {
+            instance = (await this.getAllAttributeInstancesFromObjectInstanceRecursively(currentSceneInstance))
+                .find(inst => inst.uuid === uuid);
+            if (instance) {
+                console.log("instance in current tab found", instance);
+                return instance;
+            }
         }
 
-        // If still not found, check the next source.
-        if (!instance) {
-            instances = await this.getAllRelationClassInstances();
-            instance = instances.find(instance => instance.uuid === uuid);
+        // Check in all scene instances' attribute instances
+        for (const sceneInstance of await this.getAllSceneInstancesFromLocal()) {
+            instance = (await this.getAllAttributeInstancesFromObjectInstanceRecursively(sceneInstance))
+                .find(inst => inst.uuid === uuid);
+            if (instance) {
+                console.log("instance in all sceneInstances found", instance);
+                return instance;
+            }
         }
 
-        // Finally, check the last source if still not found.
-        if (!instance) {
-            instances = await this.getAllPortInstances();
-            instance = instances.find(instance => instance.uuid === uuid);
-        }
+        return null;
+    }
 
-        return instance;
+
+    // retrieves all relations where the given instance is the destination and optionally filters by a specific relation type (metaClassUUID)
+    async getIncomingRelationsFromInstance(instanceUUID: UUID, metaClassUUID = null) {
+        const relationClasses = await this.getAllRelationClassInstances();
+        let incomingRelations = relationClasses?.filter(rel => rel.role_instance_to?.uuid_has_reference_class_instance === instanceUUID);
+        if (metaClassUUID) {
+            incomingRelations = incomingRelations?.filter(rel => rel.uuid_relationclass == metaClassUUID);
+        }
+        return incomingRelations;
+    }
+
+    // retrieves all relations where the given instance is the source and optionally filters by a specific relation type (metaClassUUID)
+    async getOutgoingRelationsFromInstance(instanceUUID: UUID, metaClassUUID = null) {
+        const relationClasses = await this.getAllRelationClassInstances();
+        let outgoingRelations = relationClasses.filter(rel => rel.role_instance_from.uuid_has_reference_class_instance == instanceUUID);
+        if (metaClassUUID) {
+            outgoingRelations = outgoingRelations.filter(rel => rel.uuid_relationclass == metaClassUUID);
+        }
+        return outgoingRelations;
     }
 
 }

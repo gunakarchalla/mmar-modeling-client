@@ -1,6 +1,6 @@
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { GlobalSelectedObject } from './global_selected_object';
-import { singleton } from 'aurelia';
+import { EventAggregator, singleton } from 'aurelia';
 import { GlobalDefinition } from './global_definitions';
 import { Logger } from './services/logger';
 
@@ -15,13 +15,16 @@ export class GlobalStateObject {
   constructor(
     private globalObjectInstance: GlobalDefinition,
     private globalSelectedObject: GlobalSelectedObject,
-    private logger: Logger
+    private logger: Logger,
+    private eventAggregator: EventAggregator
   ) {
-    this.stateNames = ['SelectionMode (drag)', 'ViewMode', 'DrawingMode (insert)', 'DrawingModeRelationClass (line)'];
+    this.stateNames = ['SelectionMode (drag)', 'ViewMode', 'DrawingMode (insert)', 'DrawingModeRelationClass (line)', 'SimulationMode'];
     this.activeState = '';
   }
   onStateChange() {
     this.logger.log(`The state has changed to ${this.getState()}`, 'info');
+
+    this.eventAggregator.publish('removeAttributeGui', { update: true });
 
     this.globalSelectedObject.removeObject();
     if (this.globalObjectInstance.transformControls) {
@@ -95,6 +98,20 @@ export class GlobalStateObject {
       //set cursor style
       this.globalObjectInstance.elementContainer.style.cursor = "copy";
 
+    }
+    //if SimulationMode
+    else if (this.activeState === this.stateNames[4]) {
+      this.globalObjectInstance.transformControls.enabled = false;
+      this.globalObjectInstance.orbitControls.enabled = true;
+        //enable orbitcontrols zoom
+        this.globalObjectInstance.orbitControls.enableZoom = true;
+        //enable orbitcontrols rotation
+        this.globalObjectInstance.orbitControls.enableRotate = true;
+      this.logger.log('transformControls disabled', 'info');
+      this.logger.log('orbitControls enabled', 'info');
+
+      //set cursor style
+      this.globalObjectInstance.elementContainer.style.cursor = "help";
     }
   }
   getState() {

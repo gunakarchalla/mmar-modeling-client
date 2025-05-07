@@ -125,6 +125,7 @@ export class PersistencyHandler {
       const linePoints: object[] = relationclass_instance.line_points;
 
       that.gc.current_instance_object = relationclass_instance;
+      that.globalObjectInstance.current_class_instance = relationclass_instance;
 
       const metaFunction = await that.metaUtility.parseMetaFunction(metaclass.geometry as unknown as string);
 

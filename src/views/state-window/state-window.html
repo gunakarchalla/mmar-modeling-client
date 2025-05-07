@@ -3,13 +3,15 @@
 <div mdc-ripple style="height: 100%; width: 100%; text-align: center; align-content: center; font-size: 8pt; ">
   State: ${globalStateObject.activeState}
   <br>
-  <button mdc-button click.trigger="viewClicked()">
+<div style="display: flex; justify-content: space-between; gap: 10px;">
+  <button mdc-button click.trigger="viewClicked()" style="flex: 1;">
     <mdc-icon>panorama</mdc-icon>View Mode
   </button>
-  <button mdc-button click.trigger="dialog.open()" style="color: ${buttonColor};">
+  <button mdc-button click.trigger="dialog.open()" style="flex: 1; color: ${buttonColor};">
     <mdc-icon>info</mdc-icon>Info
   </button>
 </div>
-<mdc-dialog view-model.ref="dialog">
+</div>
+<mdc-dialog view-model.ref="dialog" class="mdc-dialog--fullscreen mdc-dialog--fullheight">
   <dialog-user-info></dialog-user-info>
 </mdc-dialog>
