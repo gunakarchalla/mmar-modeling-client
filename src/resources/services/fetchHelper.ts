@@ -7275,7 +7275,7 @@ export class FetchHelper implements ICustomElementViewModel {
 
     // Function to download a specific file from database via get api
     async getFileByUUID(uuid: UUID): Promise<File> {
-        let url_ = this.baseUrl + "/files/{uuid}";
+        let url_ = this.baseUrl + "/metamodel/files/{uuid}";
         if (uuid === undefined || uuid === null)
             throw new Error("The parameter 'uuid' must be defined.");
         url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
@@ -7297,7 +7297,7 @@ export class FetchHelper implements ICustomElementViewModel {
 
     // Function to post a file to database via post api
     async postFile(file: File): Promise<any> {
-        let url_ = this.baseUrl + "/files";
+        let url_ = this.baseUrl + "/metamodel/files";
         url_ = url_.replace(/[?&]$/, "");
 
         const formData = new FormData();
@@ -7319,7 +7319,7 @@ export class FetchHelper implements ICustomElementViewModel {
 
     // Function to patch a specific file in database via patch api
     async patchFileByUUID(uuid: UUID, file: File): Promise<string> {
-        let url_ = this.baseUrl + "/files/{uuid}";
+        let url_ = this.baseUrl + "/metamodel/files/{uuid}";
         if (uuid === undefined || uuid === null)
             throw new Error("The parameter 'uuid' must be defined.");
         url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
@@ -7344,7 +7344,7 @@ export class FetchHelper implements ICustomElementViewModel {
 
     // Function to delete a specific file in database via delete api
     async deleteFileByUUID(uuid: UUID): Promise<void> {
-        let url_ = this.baseUrl + "/files/{uuid}";
+        let url_ = this.baseUrl + "/metamodel/files/{uuid}";
         if (uuid === undefined || uuid === null)
             throw new Error("The parameter 'uuid' must be defined.");
         url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
@@ -7363,7 +7363,7 @@ export class FetchHelper implements ICustomElementViewModel {
 
     // Function to get all file uuids from database via get api
     async getAllFileUUIDs(): Promise<UUID[]> {
-        let url_ = this.baseUrl + "/files/alluuids";
+        let url_ = this.baseUrl + "/metamodel/files/alluuids";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
