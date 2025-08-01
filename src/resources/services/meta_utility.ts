@@ -4,6 +4,7 @@ import { GlobalDefinition } from 'resources/global_definitions';
 import { UUID, Class, Relationclass, Port, SceneType, Attribute } from '../../../../mmar-global-data-structure';
 import { FetchHelper } from './fetchHelper';
 import { plainToInstance } from 'class-transformer';
+import { FileUtility } from './file_utility';
 
 @singleton()
 export class MetaUtility {
@@ -11,22 +12,28 @@ export class MetaUtility {
 
     constructor(
         private globalObjectInstance: GlobalDefinition,
-        private fetchHelper: FetchHelper
+        private fetchHelper: FetchHelper,
+        private fileUtility: FileUtility
     ) { }
 
-    private allFileUUIDS: string[] = [];    // To store all file UUIDs
-    private allFiles: Map<UUID, string> = new Map<UUID, string>(); // To store all files
+    // private allFileUUIDS: string[] = [];    // To store all file UUIDs
+    // private allFiles: Map<UUID, string> = new Map<UUID, string>(); // To store all files
 
-    async getAllFileUUIDs() {
-        this.allFileUUIDS = await this.fetchHelper.getAllFileUUIDs();
-    }
+    Files: Map<UUID, [File, string]> = new Map<UUID, [File, string]>(); // To store all files
+    // private FileDataURLs: Map<UUID, string> = new Map<UUID, string>(); // To store all file data URLs
 
-    // Function to get all the files from the database
-    async getAllFiles() {
-        for (const uuid of this.allFileUUIDS) {
-            const file = await this.fetchHelper.getFileByUUID(uuid);
+    // async getAllFileUUIDs() {
+    //     this.allFileUUIDS = await this.fetchHelper.getAllFileUUIDs();
+    // }
+
+    async getFiles() {
+        // Fetch all files from the database and store them in the allFiles map
+        const filesData = await this.fetchHelper.getFiles();
+        for (const fileData of filesData) {
+            const file = this.fileUtility.bufferToFile(fileData["data"], fileData["name"], fileData["type"], fileData["creation_time"], fileData["modification_time"]);
             let str: string;
             if (file.type.includes('model/gltf+json') || file.type.includes('application/octet-stream')) {
+                // If the fileData is a glTF model or binary, read it as text
                 str = await file.text();
             } else {
                 str = await new Promise((resolve, reject) => {
@@ -41,12 +48,70 @@ export class MetaUtility {
                     reader.readAsDataURL(file);
                 });
             }
-            this.allFiles.set(uuid, str);
+            this.Files.set(fileData.uuid, [file, str]); // Store the fileData and its DataURL in the map
         }
     }
 
-    getFileByUUID(uuid: UUID): string {
-        return this.allFiles.get(uuid);
+
+    // Function to get all the files from the database
+    // async getAllFiles() {
+    //     for (const uuid of this.allFileUUIDS) {
+    //         const file = await this.fetchHelper.getFileByUUID(uuid);
+    //         let str: string;
+    //         if (file.type.includes('model/gltf+json') || file.type.includes('application/octet-stream')) {
+    //             str = await file.text();
+    //         } else {
+    //             str = await new Promise((resolve, reject) => {
+    //                 const reader = new FileReader();
+    //                 reader.onloadend = () => {
+    //                     const result = typeof reader.result === 'string' ? reader.result : '';
+    //                     resolve(result);
+    //                 };
+    //                 reader.onerror = (error) => {
+    //                     reject(error);
+    //                 };
+    //                 reader.readAsDataURL(file);
+    //             });
+    //         }
+    //         this.allFiles.set(uuid, str);
+    //     }
+    // }
+
+    // getFileDataURLByUUID(uuid: UUID): string {
+    //     return this.FileDataURLs.get(uuid);
+    // }
+
+    // setFileDataURL(uuid: UUID, dataUrl: string) {
+    //     this.FileDataURLs.set(uuid, dataUrl);
+    // }
+
+    getFileByUUID(uuid: UUID): File {
+        return this.Files.get(uuid)[0];
+    }
+
+    async setFile(uuid: UUID, file: File) {
+        let str: string;
+        if (file.type.includes('model/gltf+json') || file.type.includes('application/octet-stream')) {
+            // If the file is a glTF model or binary, read it as text
+            str = await file.text();
+        } else {
+            str = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const result = typeof reader.result === 'string' ? reader.result : '';
+                    resolve(result);
+                };
+                reader.onerror = (error) => {
+                    reject(error);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        this.Files.set(uuid, [file, str]); // Store the file and its DataURL in the map
+    }
+
+    deleteFileByUUID(uuid: UUID) {
+        this.Files.delete(uuid);
     }
 
     async getAllSceneTypesFromDB() {
@@ -64,8 +129,8 @@ export class MetaUtility {
 
     // Function to get current tab context scene type
     async getTabContextSceneType() {
-        let tabContext = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab];
-        let sceneType = tabContext.sceneType;
+        const tabContext = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab];
+        const sceneType = tabContext.sceneType;
         return sceneType;
     }
 

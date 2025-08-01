@@ -7,6 +7,8 @@ import { bindable } from "aurelia";
 import { validate as uuidValidate } from 'uuid';
 import { FetchHelper } from 'resources/services/fetchHelper';
 import { EventAggregator } from 'aurelia';
+import { MetaUtility } from 'resources/services/meta_utility';
+import { FileUtility } from 'resources/services/file_utility';
 export class DialogUploadFile {
     private uppy: Uppy;
 
@@ -15,6 +17,8 @@ export class DialogUploadFile {
     constructor(
         private fetchHelper: FetchHelper,
         private eventAggregator: EventAggregator,
+        private metaUtility: MetaUtility,
+        private fileUtility: FileUtility,
     ) { }
 
     async attached() {
@@ -53,6 +57,7 @@ export class DialogUploadFile {
                     if (response) {
                         this.eventAggregator.publish('fileUploaded', this.attributeInstance);
                         this.attributeInstance.value = response.uuid;
+                        this.metaUtility.setFile(this.attributeInstance.value, newFile);
                     }
                 }
                 this.uppy.removeFile(file.id);

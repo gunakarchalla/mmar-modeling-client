@@ -5,6 +5,7 @@ import { ICustomElementViewModel } from 'aurelia';
 import { Class, Metamodel, SceneType, Attribute, Relationclass, Role, Port, AttributeType, SceneInstance, ClassInstance, RelationclassInstance, RoleInstance, PortInstance, AttributeInstance, Procedure, UUID } from '../../../../mmar-global-data-structure';
 import { IHydratedController } from '@aurelia/runtime-html';
 import { GlobalDefinition } from 'resources/global_definitions';
+import { fstat } from 'fs';
 
 export class FetchHelper implements ICustomElementViewModel {
 
@@ -7273,6 +7274,25 @@ export class FetchHelper implements ICustomElementViewModel {
         return Promise.resolve<AttributeType[]>(null as any);
     }
 
+    async getFiles() {
+        let url_ = this.baseUrl + "/metamodel/files";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                "authorization": "Bearer " + this.globalObjectInstance.accessToken
+            }
+        };
+
+        this.logger.log('API call on ' + url_, 'api')
+        const response = await this.http.fetch(url_, options_);
+        const responseText = await response.text();
+        let result = JSON.parse(responseText);
+        return result;
+    }
+
     // Function to download a specific file from database via get api
     async getFileByUUID(uuid: UUID): Promise<File> {
         let url_ = this.baseUrl + "/metamodel/files/{uuid}";
@@ -7362,24 +7382,24 @@ export class FetchHelper implements ICustomElementViewModel {
     }
 
     // Function to get all file uuids from database via get api
-    async getAllFileUUIDs(): Promise<UUID[]> {
-        let url_ = this.baseUrl + "/metamodel/files/alluuids";
-        url_ = url_.replace(/[?&]$/, "");
+    // async getAllFileUUIDs(): Promise<UUID[]> {
+    //     let url_ = this.baseUrl + "/metamodel/files/alluuids";
+    //     url_ = url_.replace(/[?&]$/, "");
 
-        let options_: RequestInit = {
-            method: "GET",
-            headers: {
-                "Accept": "application/json",
-                "authorization": "Bearer " + this.globalObjectInstance.accessToken
-            }
-        };
+    //     let options_: RequestInit = {
+    //         method: "GET",
+    //         headers: {
+    //             "Accept": "application/json",
+    //             "authorization": "Bearer " + this.globalObjectInstance.accessToken
+    //         }
+    //     };
 
-        this.logger.log('API call on ' + url_, 'api')
-        const response = await this.http.fetch(url_, options_);
-        const responseText = await response.text();
-        let result = JSON.parse(responseText);
-        return result["uuids"];
-    }
+    //     this.logger.log('API call on ' + url_, 'api')
+    //     const response = await this.http.fetch(url_, options_);
+    //     const responseText = await response.text();
+    //     let result = JSON.parse(responseText);
+    //     return result["uuids"];
+    // }
 }
 
 class ApiException extends Error {

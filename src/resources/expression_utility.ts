@@ -3,6 +3,8 @@ import { GlobalDefinition } from './global_definitions';
 import { InstanceUtility } from './services/instance_utility';
 import { AttributeInstance, ClassInstance, RelationclassInstance, UUID } from '../../../mmar-global-data-structure';
 import { MetaUtility } from './services/meta_utility';
+import { FileUtility } from './services/file_utility';
+import { FetchHelper } from './services/fetchHelper';
 
 @singleton()
 export class ExpressionUtility {
@@ -12,6 +14,8 @@ export class ExpressionUtility {
         private instanceUtility: InstanceUtility,
         private eventAggregator: EventAggregator,
         private metaUtility: MetaUtility,
+        private fileUtility: FileUtility,
+        private fetchHelper: FetchHelper
     ) {
     }
 
@@ -215,15 +219,15 @@ export class ExpressionUtility {
         }
     }
 
-    getFileByUUIDAndConvertToBase64(fileUUID: UUID): string {
-        // const file = await this.fetchHelper.getFileByUUID(fileUUID);
-        const str = this.metaUtility.getFileByUUID(fileUUID);
+    async getImageByUUID(fileUUID: UUID): Promise<string> {
+        const file = this.metaUtility.getFileByUUID(fileUUID);
+        const str = await this.fileUtility.FiletoDataUrl(file);
         return str;
     }
 
-    getBase64FilebyUUID(fileUUID: UUID): string {
-        // const file = await this.fetchHelper.getFileByUUID(fileUUID);
-        const str = this.metaUtility.getFileByUUID(fileUUID);
+    async getGltfByUUID(fileUUID: UUID): Promise<string> {
+        const file = this.metaUtility.getFileByUUID(fileUUID);
+        const str = file.text();
         return str;
     }
 }

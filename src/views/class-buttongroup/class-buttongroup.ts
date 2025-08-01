@@ -7,7 +7,7 @@ import { bindable } from 'aurelia';
 export class ClassButtongroup {
 
     @bindable openTab = null;
-    
+
     constructor(
         private globalClassObject: GlobalClassObject,
         private globalStateObject: GlobalStateObject,
