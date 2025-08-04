@@ -7319,7 +7319,6 @@ export class FetchHelper implements ICustomElementViewModel {
     async postFile(file: File, compress: boolean = false, targetWidth?: number, quality?: number): Promise<any> {
         let url_ = this.baseUrl + "/metamodel/files";
 
-        console.log("compress:", compress);
         // If compress is true, then add query parameters
         if (compress) {
             const queryParams = new URLSearchParams();

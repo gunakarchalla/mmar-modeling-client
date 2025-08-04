@@ -36,11 +36,9 @@ export class DialogUploadFile {
         this.uppy = new Uppy({ restrictions: { maxNumberOfFiles: 1 } });
         this.uppy.use(Dashboard, { inline: true, target: '#forUpload', showProgressDetails: true, width: '100%', height: '200px', hideUploadButton: true });
         this.uppy.on('file-added', (file) => {
-            console.log("File added:", file);
             this.validateFile(file);
         });
         this.uppy.on('file-removed', (file) => {
-            console.log("File removed:", file);
             this.disableCompress = true;
             this.targetWidthError = '';
             this.qualityError = '';
@@ -76,7 +74,6 @@ export class DialogUploadFile {
                     // Create a proper binary File
                     const newFile = new File([byteArray], file.name, { type: file.type });
 
-                    console.log("compress start:", this.compress);
                     const response = uuidValidate(this.attributeInstance.value) ? await this.fetchHelper.patchFileByUUID(this.attributeInstance.value, newFile, this.compress, this.targetWidth, this.quality) : await this.fetchHelper.postFile(newFile, this.compress, this.targetWidth, this.quality);
                     if (response) {
                         this.eventAggregator.publish('fileUploaded', this.attributeInstance);
