@@ -3,7 +3,27 @@
 </mdc-dialog-title>
 <mdc-dialog-content>
     <div id="forUpload"></div>
+    <div if.bind="compress" class="compression-parameters-container">
+        <div>
+            <label for="targetWidthInput">Target Width:</label>
+            <input id="targetWidthInput" type="number" value.bind="targetWidth" min="1"
+                input.trigger="validateTargetWidth()" class="compression-parameters" />
+            <span class="error-message" if.bind="targetWidthError">${targetWidthError}</span>
+        </div>
+        <div>
+            <label for="qualityInput">Quality:</label>
+            <input id="qualityInput" type="number" value.bind="quality" min="1" max="100" step="1"
+                input.trigger="validateQuality()" class="compression-parameters" />
+            <span class="error-message" if.bind="qualityError">${qualityError}</span>
+        </div>
+    </div>
 </mdc-dialog-content>
 <mdc-dialog-actions>
-    <button mdc-button data-mdc-dialog-action="ok" click.trigger="load()">Load</button>
+    <mdc-form-field align-start class="compress-switch-left">
+        <mdc-checkbox checked.two-way="compress" disabled.bind="disableCompress"></mdc-checkbox>
+        <label>Compress Image</label>
+    </mdc-form-field>
+    <div class="div-max-width"></div>
+    <button mdc-button data-mdc-dialog-action="ok" click.trigger="upload()"
+        disabled.bind="compress && (targetWidthError || qualityError)">Upload</button>
 </mdc-dialog-actions>
