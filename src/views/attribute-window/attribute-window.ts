@@ -279,34 +279,8 @@ export class AttributeWindow {
     }, 10);
   }
 
-  //Update text mesh -> called from view
-  // updateTextMesh(attributeInstance: AttributeInstance) {
-  //   const oldValue: { uuid: string, value: any } = this.oldAttributeValues.find((oldValue: { uuid: string, value: any }) => oldValue.uuid == attributeInstance.uuid);
-  //   let textMesh: any = undefined;
 
-  //   if (this.currentClassInstance) {
-  //     textMesh = this.globalObjectInstance.dragObjects.find(textMesh =>
-  //       textMesh.name == oldValue.value + textMesh.uuid
-  //       && textMesh.parent.uuid == this.currentClassInstance.uuid);
-  //   } else if (this.currentPortInstance) {
-  //     textMesh = this.globalObjectInstance.dragObjects.find(textMesh =>
-  //       textMesh.name == oldValue.value + textMesh.uuid
-  //       && textMesh.parent.uuid == this.currentPortInstance.uuid);
-  //   }
-
-  //   //-----------------------------------
-  //   if (textMesh) {
-  //     textMesh.text = attributeInstance.value;
-  //     textMesh.name = attributeInstance.value + textMesh.uuid;
-  //     oldValue["value"] = attributeInstance.value;
-
-  //     // pus to log file
-  //     this.logger.log('Attribute ' + oldValue["value"] + ' changed to ' + attributeInstance.value + '!', 'done');
-  //   }
-  // }
-
-
-  async fieldChange(attributeInstance) {
+  async fieldChange(attributeInstance: AttributeInstance) {
 
     //update attribute value
     attributeInstance.value = attributeInstance.value.toString();
@@ -323,10 +297,19 @@ export class AttributeWindow {
       await this.hybridAlgorithmsService.checkHybridAlgorithms(null, null, [this.currentPortInstance]);
     }
 
+    //patch attribute instance
+    //---------------------------------
+    // !!! endpoints with instances/attributesInstances are not working
+    // instead set tha globalObjectInstance.doSceneInstancePatch to true
+    //---------------------------------
+    // await this.fetchHelper.attributeInstancesPATCH(attributeInstance.uuid, attributeInstance).then((response) => {
+    //   this.logger.log("PATCH attribute instance", response.uuid + " with value " + response.value);
+    // });
+
+    this.globalObjectInstance.doSceneInstancePatch = true;
+
     return Promise.resolve();
   }
-
-  // todo -> add roleinstance name to other reference fields
 
 
   //this function handles the dialog used for reference fields. Since the dialog is used multiple times, it is called here with the right context

@@ -8,7 +8,7 @@
       id=${class.uuid} click.trigger="onButtonClicked(class.uuid)" name=${class.name}>
       <mdc-card-primary-action mdc-tooltip="value.bind: class.name"
         style=" align-items: center; height: 100%; text-align: center;">
-        <mdc-image-list-item src.bind=getImage(class)></mdc-image-list-item>
+        <mdc-image-list-item src.bind=class.icon></mdc-image-list-item>
         <div style="font-size: .7em;  word-break: break-word;">${class.name}</div>
       </mdc-card-primary-action>
     </mdc-card>

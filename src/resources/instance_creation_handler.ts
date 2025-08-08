@@ -206,7 +206,7 @@ export class InstanceCreationHandler {
                 uuid,
                 classUUID
             );
-            class_instance.name = metaclass.name + '_' + uuid;
+            class_instance.name = metaclass.name;
             class_instance.coordinates_2d = { x, y, z };
 
             //push to log file
@@ -288,6 +288,8 @@ export class InstanceCreationHandler {
                 port.uuid,
                 class_instance,
                 null);
+
+            portInstance.name = port.name;
         };
 
         this.globalObjectInstance.current_port_instance = null;
@@ -332,7 +334,7 @@ export class InstanceCreationHandler {
 
         relationclass_instance.uuid_relationclass_bendpoint = relation_metaclass.bendpoint;
 
-        relationclass_instance.name = relation_metaclass.name + '_' + uuid;
+        relationclass_instance.name = relation_metaclass.name;
         relationclass_instance.coordinates_2d = { x, y, z };
 
         //add relationclass_instance to scene_instance
@@ -470,7 +472,8 @@ export class InstanceCreationHandler {
         );
 
         this.globalObjectInstance.current_port_instance = port_instance;
-        class_instance.port_instance.push(port_instance);
+        class_instance ? class_instance.port_instance.push(port_instance): undefined;
+        scene_instance ? scene_instance.port_instances.push(port_instance) : undefined;
 
         //push to log file
         this.logger.log('Port Instance ' + port_instance.name + ' created', 'done');

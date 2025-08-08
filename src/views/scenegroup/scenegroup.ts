@@ -45,6 +45,9 @@ export class Scenegroup {
     ) {
         // subscribe to updateSceneGroup event that is emitted, e.g. when a new scdneType or SceneInstance file is imported
         this.eventAggregator.subscribe('updateSceneGroup', this.updateTree.bind(this));
+
+        this.eventAggregator.subscribe('initSceneGroup', this.whenLoggedIn.bind(this));
+
     }
 
     async attached() {
@@ -183,8 +186,6 @@ export class Scenegroup {
         this.globalObjectInstance.sceneTree = this.tree;
         // disable loading bar
         this.scenesLoadingBar = false;
-        this
-
     }
 
     async openScene() {

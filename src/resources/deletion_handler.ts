@@ -7,6 +7,7 @@ import { GraphicContext } from './graphic_context';
 import { ClassInstance, AttributeInstance, UUID, RelationclassInstance, PortInstance, RoleInstance } from "../../../mmar-global-data-structure";
 import { GlobalSelectedObject } from "./global_selected_object";
 import { Logger } from './services/logger';
+import { FetchHelper } from './services/fetchHelper';
 
 
 @singleton()
@@ -20,16 +21,17 @@ export class DeletionHandler {
         private gc: GraphicContext,
         private globalSelectedObject: GlobalSelectedObject,
         private instanceUtility: InstanceUtility,
-        private logger: Logger
+        private logger: Logger,
+        private fetchHelper: FetchHelper
     ) { }
 
     async onPressDelete() {
-        let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+        const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
 
         let index;
         let index2;
         if (this.globalObjectInstance.current_class_instance) {
-            index = sceneInstance.class_instances.findIndex(instance => instance.uuid == this.globalObjectInstance.current_class_instance.uuid);            
+            index = sceneInstance.class_instances.findIndex(instance => instance.uuid == this.globalObjectInstance.current_class_instance.uuid);
             index2 = sceneInstance.relationclasses_instances.findIndex(instance => instance.uuid == this.globalObjectInstance.current_class_instance.uuid);
         }
         if (index >= 0) {
@@ -44,7 +46,7 @@ export class DeletionHandler {
 
     async deleteClassInstance(classInstance: ClassInstance, index: number) {
 
-        let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+        const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
         //delete connected relationclassInstances
         await this.deleteConnectedRelationclassInstances(classInstance, undefined);
 
@@ -52,7 +54,7 @@ export class DeletionHandler {
         await this.deleteConnectedPortInstances(classInstance);
 
         sceneInstance.class_instances.splice(index, 1);
-        let object: THREE.Object3D = this.globalObjectInstance.scene.getObjectByProperty('uuid', classInstance.uuid);
+        const object: THREE.Object3D = this.globalObjectInstance.scene.getObjectByProperty('uuid', classInstance.uuid);
 
         await this.gc.deleteObject(object as unknown as THREE.Mesh);
 
@@ -63,6 +65,7 @@ export class DeletionHandler {
         this.globalSelectedObject.removeObject();
 
 
+        let classInstanceIsBendpoint = false;
         //if the classInstance is a single bendpoint only we have to remove it from all relationclassInstances
         //we search trough all relationclassInstances and check if the classInstance is a single bendpoint
         for (const relationclassInstance of sceneInstance.relationclasses_instances) {
@@ -78,8 +81,9 @@ export class DeletionHandler {
 
             if (indexOfObject != -1) {
                 relationclassInstance.line_points.splice(indexOfObject + 1, 1);
+                classInstanceIsBendpoint = true;
             }
-        };
+        }
 
 
         //delete all attributes of the classInstance
@@ -87,21 +91,36 @@ export class DeletionHandler {
             await this.deleteAttributeInstance(attributeInstance);
         }
 
-
-
+        // delete classInstance from DB if autoSave is enabled
+        // if bendpoint, call deleteBendpoint instead
+        if (this.globalObjectInstance.autoSave) {
+            try {
+                if (classInstanceIsBendpoint) {
+                    await this.fetchHelper.bendpointInstanceDELETE(classInstance.uuid);
+                    this.logger.log(`Bendpoint with uuid ${classInstance.uuid} deleted from DB`, 'info');
+                }
+                else {
+                    await this.fetchHelper.classesInstancesAllDELETE2(classInstance.uuid);
+                    this.logger.log(`ClassInstance with uuid ${classInstance.uuid} deleted from DB`, 'info');
+                }
+            } catch (error) {
+                this.logger.log(`Error deleting ClassInstance with uuid ${classInstance.uuid}: ${error}`, "error");
+            }
+        }
+        this.globalObjectInstance.doSceneInstancePatch = true;
     }
 
     async deleteRelationclassInstance(_relationclassInstance: ClassInstance, index: number) {
-        let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
-        let relationclassInstance = _relationclassInstance as RelationclassInstance;
+        const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+        const relationclassInstance = _relationclassInstance as RelationclassInstance;
         let role_from_instance;
         let role_to_instance;
 
         //find role_from_instance in gc.role_instances
-        let role_from_instance_index = this.globalObjectInstance.role_instances.findIndex(role => role.uuid == relationclassInstance.role_instance_from.uuid);
+        const role_from_instance_index = this.globalObjectInstance.role_instances.findIndex(role => role.uuid == relationclassInstance.role_instance_from.uuid);
         if (role_from_instance_index != -1) {
             role_from_instance = this.globalObjectInstance.role_instances[role_from_instance_index];
-    
+
             //delete role_from_instance in gc.role_instances
             this.globalObjectInstance.role_instances.splice(role_from_instance_index, 1);
             //push to log file
@@ -110,30 +129,25 @@ export class DeletionHandler {
 
 
         //find role_to_instance in gc.role_instances
-        let role_to_instance_index ;
-        if (relationclassInstance.role_instance_to){
+        let role_to_instance_index;
+        if (relationclassInstance.role_instance_to) {
             role_to_instance_index = this.globalObjectInstance.role_instances.findIndex(role => role.uuid == relationclassInstance.role_instance_to.uuid);
         }
-        if (role_to_instance_index != -1 && role_to_instance_index != undefined)
-        {
+        if (role_to_instance_index != -1 && role_to_instance_index != undefined) {
             role_to_instance = this.globalObjectInstance.role_instances[role_to_instance_index];
-    
+
             //delete role_to_instance in gc.role_instances
             this.globalObjectInstance.role_instances.splice(role_to_instance_index, 1);
             //push to log file
             this.logger.log('Role Instance ' + role_to_instance.uuid + ' deleted', 'done');
         }
 
-
-
-
-
         sceneInstance.relationclasses_instances.splice(index, 1);
 
-        let object: THREE.Object3D = this.globalObjectInstance.scene.getObjectByProperty('uuid', relationclassInstance.uuid);
+        const object: THREE.Object3D = this.globalObjectInstance.scene.getObjectByProperty('uuid', relationclassInstance.uuid);
 
         //push to log file
-        this.logger.log('Relationclass Instance ' + object.name + ' deleted', 'done');
+        this.logger.log('Relationclass Instance ' + object.name + ' deleted from THREE scene', 'done');
 
 
         await this.gc.deleteObject(object as unknown as THREE.Mesh);
@@ -148,10 +162,10 @@ export class DeletionHandler {
 
         for (const bendpoint of listToDelete) {
             await this.deleteBendpoint(bendpoint.UUID, relationclassInstance);
-        };
+        }
 
         //remove from gc.updateLinesArray
-        let lineIndex = this.globalObjectInstance.updateLinesArray.findIndex(line => line.uuid == relationclassInstance.uuid);
+        const lineIndex = this.globalObjectInstance.updateLinesArray.findIndex(line => line.uuid == relationclassInstance.uuid);
         this.globalObjectInstance.updateLinesArray.splice(lineIndex, 1);
 
         //this.globalStateObject.setState(0);
@@ -164,20 +178,31 @@ export class DeletionHandler {
         }
 
 
+        // delete relationclassInstance from DB if autoSave is enabled
+        if (this.globalObjectInstance.autoSave) {
+            try {
+                await this.fetchHelper.relationClassesInstancesAllDELETE2(relationclassInstance.uuid);
+                this.logger.log(`RelationclassInstance with uuid ${relationclassInstance.uuid} deleted from DB`, 'info');
+            } catch (error) {
+                this.logger.log(`Error deleting RelationclassInstance with uuid ${relationclassInstance.uuid}: ${error}`, "error");
+            }
+        }
+        // !!! the api deletion strategy is not bullet proof. Thus, we patch the local sceneInstance again
+        this.globalObjectInstance.doSceneInstancePatch = true;
 
     }
 
     async deleteAttributeInstance(attributeInstance: AttributeInstance) {
-        let index = this.globalObjectInstance.attribute_instances.findIndex(instance => instance.uuid == attributeInstance.uuid);
-        let instance: AttributeInstance[] = this.globalObjectInstance.attribute_instances.splice(index, 1);
+        const index = this.globalObjectInstance.attribute_instances.findIndex(instance => instance.uuid == attributeInstance.uuid);
+        const instance: AttributeInstance[] = this.globalObjectInstance.attribute_instances.splice(index, 1);
 
         //push to log file
         this.logger.log('Attribute Instance ' + instance[0].name + ' deleted', 'done');
     }
 
     async deleteBendpoint(bendpointUUID: UUID, relationclassInstance: RelationclassInstance, relationsOnly?: boolean) {
-        let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
-        let linePoints: { UUID: UUID, Point: THREE.Vector3 }[] = relationclassInstance.line_points as { UUID: UUID, Point: THREE.Vector3 }[];
+        const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+        const linePoints: { UUID: UUID, Point: THREE.Vector3 }[] = relationclassInstance.line_points as { UUID: UUID, Point: THREE.Vector3 }[];
 
         //find linePoint in line_points array and delete it
         const linePoint = linePoints.find((linePoint) => {
@@ -189,63 +214,63 @@ export class DeletionHandler {
 
         //remove bendpoint classInstance if not specified otherwise
         if (!relationsOnly) {
-            let ClassInstance = sceneInstance.class_instances.find(classInstance => classInstance.uuid == bendpointUUID);
-            let classInstanceIndex = sceneInstance.class_instances.findIndex(classInstance => classInstance.uuid == bendpointUUID);
+            const ClassInstance = sceneInstance.class_instances.find(classInstance => classInstance.uuid == bendpointUUID);
+            const classInstanceIndex = sceneInstance.class_instances.findIndex(classInstance => classInstance.uuid == bendpointUUID);
             //let sceneInstanceIndex = sceneInstance.class_instances.findIndex(classInstance => classInstance.uuid == bendpointUUID);
             await this.deleteClassInstance(ClassInstance, classInstanceIndex);
         }
     }
 
-    async deleteConnectedRelationclassInstances(classInstance: ClassInstance, portInstance: PortInstance) {
-        let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
-        let relationclassInstances: RelationclassInstance[] = sceneInstance.relationclasses_instances;
-        let roleInstances: RoleInstance[] = this.globalObjectInstance.role_instances;
+    async deleteConnectedRelationclassInstances(relationclassInstance: ClassInstance, portInstance: PortInstance) {
+        const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+        const relationclassInstances: RelationclassInstance[] = sceneInstance.relationclasses_instances;
+        const roleInstances: RoleInstance[] = this.globalObjectInstance.role_instances;
 
         //if classInstance
-        if (classInstance) {
+        if (relationclassInstance) {
 
             //find roles connected to classInstance
-            let roleInstancesConnectedToClassInstance = roleInstances.filter(roleInstance => roleInstance.uuid_has_reference_class_instance == classInstance.uuid);
+            const roleInstancesConnectedToClassInstance = roleInstances.filter(roleInstance => roleInstance.uuid_has_reference_class_instance == relationclassInstance.uuid);
 
             //find relationclassInstances connected to roleInstances for each roleInstance
             for (const roleInstances of roleInstancesConnectedToClassInstance) {
-                let relationclassInstancesConnectedToRoleInstances = relationclassInstances.filter(relationclassInstance =>
+                const relationclassInstancesConnectedToRoleInstances = relationclassInstances.filter(relationclassInstance =>
                     (relationclassInstance.role_instance_from.uuid == roleInstances.uuid || relationclassInstance.role_instance_to.uuid == roleInstances.uuid));
 
                 //delete relationclassInstances
                 for (const relationclassInstance of relationclassInstancesConnectedToRoleInstances) {
-                    let relationclassInstanceIndex = relationclassInstances.findIndex(instance => instance.uuid == relationclassInstance.uuid);
+                    const relationclassInstanceIndex = relationclassInstances.findIndex(instance => instance.uuid == relationclassInstance.uuid);
                     //let sceneInstanceIndex = sceneInstance.relationclasses_instances.findIndex(instance => instance.uuid == relationclassInstance.uuid);
                     await this.deleteRelationclassInstance(relationclassInstance, relationclassInstanceIndex);
-                };
+                }
 
-            };
+            }
 
         }
 
         //if portInstance
         if (portInstance) {
             //find roles connected to portInstance
-            let roleInstancesConnectedToPortInstance = roleInstances.filter(roleInstance => roleInstance.uuid_has_reference_port_instance == portInstance.uuid);
+            const roleInstancesConnectedToPortInstance = roleInstances.filter(roleInstance => roleInstance.uuid_has_reference_port_instance == portInstance.uuid);
 
             //find relationclassInstances connected to roleInstances for each roleInstance
             for (const roleInstances of roleInstancesConnectedToPortInstance) {
-                let relationclassInstancesConnectedToRoleInstances = relationclassInstances.filter(relationclassInstance =>
+                const relationclassInstancesConnectedToRoleInstances = relationclassInstances.filter(relationclassInstance =>
                     (relationclassInstance.role_instance_from.uuid == roleInstances.uuid || relationclassInstance.role_instance_to.uuid == roleInstances.uuid));
 
                 //delete relationclassInstances
                 for (const relationclassInstance of relationclassInstancesConnectedToRoleInstances) {
-                    let relationclassInstanceIndex = relationclassInstances.findIndex(instance => instance.uuid == relationclassInstance.uuid);
+                    const relationclassInstanceIndex = relationclassInstances.findIndex(instance => instance.uuid == relationclassInstance.uuid);
                     //let sceneInstanceIndex = sceneInstance.relationclasses_instances.findIndex(instance => instance.uuid == relationclassInstance.uuid);
                     await this.deleteRelationclassInstance(relationclassInstance, relationclassInstanceIndex);
-                };
+                }
 
-            };
+            }
         }
     }
 
     async deleteConnectedPortInstances(classInstance: ClassInstance) {
-        let portInstances = classInstance.port_instance;
+        const portInstances = classInstance.port_instance;
 
         //delete connected relationclassInstances
         for (const portInstance of portInstances) {

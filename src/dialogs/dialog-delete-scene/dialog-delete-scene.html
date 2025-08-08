@@ -1,0 +1,22 @@
+<mdc-dialog-title>
+    Delete SceneInstance
+</mdc-dialog-title>
+<mdc-dialog-content>
+
+    <br>
+    <mdc-select label="Select SceneInstance" value.bind="selectedSceneInstance" required style="display: flex;"
+        change.trigger="onSelectionChange($event)">
+        <mdc-list>
+            <div repeat.for="sceneType of tree">
+                <mdc-list-item repeat.for="sceneInstance of sceneType.children" value.bind="sceneInstance">${sceneInstance.name} | ${sceneInstance.uuid}</mdc-list-item>
+            </div>
+        </mdc-list>
+    </mdc-select>
+
+    <br>
+
+</mdc-dialog-content>
+<mdc-dialog-actions style="position: absolute; bottom: 10px;">
+    <button mdc-button data-mdc-dialog-action="deleteScene" click.trigger="deleteScene()">Delete SceneInstance</button>
+    <button mdc-button data-mdc-dialog-action="cancel" click.trigger="cancel()">Cancel</button>
+</mdc-dialog-actions>

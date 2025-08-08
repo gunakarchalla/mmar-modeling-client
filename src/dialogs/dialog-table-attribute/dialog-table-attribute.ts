@@ -1,13 +1,17 @@
 import { GlobalDefinition } from "resources/global_definitions";
 import { InstanceCreationHandler } from "resources/instance_creation_handler";
 import { MetaUtility } from "resources/services/meta_utility";
-import { AttributeInstance, Attribute, AttributeType, UUID, Class } from "../../../../mmar-global-data-structure";
+import { AttributeInstance, Attribute, AttributeType, UUID, Class, ClassInstance, PortInstance } from "../../../../mmar-global-data-structure";
 import { ColumnStructure } from "../../../../mmar-global-data-structure/models/meta/Metamodel_columns.structure";
 import { bindable } from "aurelia";
+import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
+import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
 
 export class DialogTableAttribute {
 
     @bindable attributeInstance: AttributeInstance = null;
+    @bindable currentClassInstance: ClassInstance = null;
+    @bindable currentPortInstance: PortInstance = null;
 
     private currentAttribute: Attribute;
     private currentAttributeType: AttributeType;
@@ -26,9 +30,11 @@ export class DialogTableAttribute {
 
 
     constructor(
-        private golbalObjectInstance: GlobalDefinition,
+        private globalObjectInstance: GlobalDefinition,
         private metaUtility: MetaUtility,
-        private instanceCreationHandler: InstanceCreationHandler
+        private instanceCreationHandler: InstanceCreationHandler,
+        private vizrepUpdateChecker: VizrepUpdateChecker,
+        private hybridAlgorithmsService: HybridAlgorithmsService,
     ) {
 
     }
@@ -54,7 +60,7 @@ export class DialogTableAttribute {
 
     async setMetaInformation() {
         const attributeUUID: UUID = this.attributeInstance.uuid_attribute;
-        this.currentClass = await this.metaUtility.getMetaClass(this.golbalObjectInstance.current_class_instance.uuid_class);
+        this.currentClass = await this.metaUtility.getMetaClass(this.globalObjectInstance.current_class_instance.uuid_class);
         this.currentAttribute = this.currentClass.attributes.find(attribute => attribute.uuid === attributeUUID);
         this.currentAttributeType = this.currentAttribute.attribute_type;
     }
@@ -84,9 +90,9 @@ export class DialogTableAttribute {
         }
 
         let rowCount = 0;
-        for (let i = 0; i < this.tableAttributes.length; i+= this.columns.length) {
+        for (let i = 0; i < this.tableAttributes.length; i += this.columns.length) {
             this.rows.push([]);
-            
+
             //for each column
             for (let j = 0; j < this.columns.length; j++) {
                 this.rows[rowCount].push(this.tableAttributes[i + j]);
@@ -133,7 +139,7 @@ export class DialogTableAttribute {
             null,
             null,
             //get attribute type default value
-            parentAttributeColumn.attribute.default_value ? parentAttributeColumn.attribute.default_value : "not defined" ,
+            parentAttributeColumn.attribute.default_value ? parentAttributeColumn.attribute.default_value : "not defined",
             null,
             null,
             null,
@@ -147,6 +153,36 @@ export class DialogTableAttribute {
 
         // Add the new attribute instance to the list of attribute instances in the current attribute
         this.attributeInstance.table_attributes.push(newAttributeInstance);
+    }
+
+    async fieldChange(attributeInstance: AttributeInstance) {
+
+        //update attribute value
+        attributeInstance.value = attributeInstance.value.toString();
+
+        await this.vizrepUpdateChecker.checkForVizRepUpdate(attributeInstance);
+
+        //if this.currentClassInstance is set, we are in a classInstance
+        if (this.currentClassInstance) {
+            await this.hybridAlgorithmsService.checkHybridAlgorithms(null, [this.currentClassInstance]);
+        }
+        //if this.currentPortInstance is set, we are in a portInstance
+        else if (this.currentPortInstance) {
+            await this.hybridAlgorithmsService.checkHybridAlgorithms(null, null, [this.currentPortInstance]);
+        }
+
+        //patch attribute instance
+        //---------------------------------
+        // !!! endpoints with instances/attributesInstances are not working
+        // instead set tha globalObjectInstance.doSceneInstancePatch to true
+        //---------------------------------
+        // await this.fetchHelper.attributeInstancesPATCH(attributeInstance.uuid, attributeInstance).then((response) => {
+        //   this.logger.log("PATCH attribute instance", response.uuid + " with value " + response.value);
+        // });
+
+        this.globalObjectInstance.doSceneInstancePatch = true;
+
+        return Promise.resolve();
     }
 
 

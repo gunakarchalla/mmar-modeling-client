@@ -9,7 +9,7 @@
         <tr repeat.for="row of rows" style="border: 0.75px solid;">
           <td repeat.for="cell of row" style="border: 0.75px solid;">
             <!-- <input type="text" value.bind="cell.value" > -->
-            <mdc-text-field class="mdc-text-field" value.bind="cell.value" ></mdc-text-field>
+            <mdc-text-field class="mdc-text-field" value.bind="cell.value" change.trigger="fieldChange(cell)" ></mdc-text-field>
           </td>
         </tr>
       </table>

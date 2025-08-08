@@ -243,33 +243,39 @@ export class PersistencyHandler {
 
   async persistSceneInstanceToDB() {
     //get sceneInstance from TabContext
-    let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+    const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
 
     //this calls the endpoint for posting a sceneInstance to the db
     //check first if post or patch
     //call the endpoint for getting the sceneInstances of the selected sceneType
 
     //get SceneType of the sceneInstance
-    let sceneType = await this.metaUtility.getTabContextSceneType();
+    const sceneType = await this.metaUtility.getTabContextSceneType();
     if (sceneType) {
-      const sceneInstances = await this.fetchHelper.sceneInstancesAllGET(sceneType.uuid);
-      let foundInstance: SceneInstance;
-      if (sceneInstances) {
-        foundInstance = sceneInstances.find(instance => instance.uuid == sceneInstance.uuid)
-      }
 
-      if (foundInstance) {
-        const patchedInstance = await this.fetchHelper.sceneInstancesPATCH(sceneInstance.uuid, sceneInstance)
-        this.logger.log('SceneInstance patched', 'info');
-      }
-      else {
-        const postedInstance = await this.fetchHelper.sceneInstancesPOST(sceneType.uuid, sceneInstance)
-        this.logger.log('SceneInstance posted', 'info');
+      // try to patch the sceneInstance
+
+      try {
+        this.fetchHelper.sceneInstancesPATCH(sceneInstance.uuid, sceneInstance)
+          .then((response) => {
+            this.logger.log('SceneInstance patched', 'info');
+          })
+          .catch((patchError) => {
+            this.logger.log(`SceneInstance patch failed: ${patchError?.message || JSON.stringify(patchError)}`, 'error');
+            this.logger.log('Trying to post instead', 'info');
+
+            this.fetchHelper.sceneInstancesPOST(sceneType.uuid, sceneInstance)
+              .then((response) => {
+                this.logger.log('SceneInstance posted', 'info');
+              })
+              .catch((postError) => {
+                this.logger.log(`SceneInstance post failed: ${postError?.message || JSON.stringify(postError)}`, 'error');
+              });
+          });
+      } catch (error) {
+        this.logger.log(`Error in persistSceneInstanceToDB: ${error?.message || JSON.stringify(error)}`, 'error');
       }
     }
-
-
-
   }
 
   async loadPersistedModel(modelToLoad: SceneInstance) {

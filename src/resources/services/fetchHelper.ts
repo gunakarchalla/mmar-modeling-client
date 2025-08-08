@@ -880,6 +880,54 @@ export class FetchHelper implements ICustomElementViewModel {
     }
 
     /**
+     * Get all classes
+     * @return Successful operation
+     */
+    classesAllGET(): Promise<Class[]> {
+        let url_ = this.baseUrl + "/metamodel/classes";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                "authorization": "Bearer " + this.globalObjectInstance.accessToken
+            }
+        };
+
+        this.logger.log('API call on ' + url_, 'api')
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processClassesAllGET(_response);
+        });
+
+    }
+
+    protected processClassesAllGET(response: Response): Promise<Class[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+                let result200: any = null;
+                let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+                if (Array.isArray(resultData200)) {
+                    result200 = [] as any;
+                    for (let item of resultData200)
+                        result200!.push(Class.fromJS(item));
+                }
+                else {
+                    result200 = <any>null;
+                }
+                return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+                return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<Class[]>(null as any);
+    }
+
+    /**
      * Get a class by uuid
      * @param classeUuid The uuid of a class
      * @return Successful operation
@@ -2425,6 +2473,54 @@ export class FetchHelper implements ICustomElementViewModel {
     }
 
     /**
+     * Get all relationclasses
+     * @return Successful operation
+     */
+    relationclassesAllGET(): Promise<Relationclass[]> {
+        let url_ = this.baseUrl + "/metamodel/relationClasses";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                "authorization": "Bearer " + this.globalObjectInstance.accessToken
+            }
+        };
+
+        this.logger.log('API call on ' + url_, 'api')
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRelationclassesAllGET(_response);
+        });
+
+    }
+
+    protected processRelationclassesAllGET(response: Response): Promise<Relationclass[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+                let result200: any = null;
+                let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+                if (Array.isArray(resultData200)) {
+                    result200 = [] as any;
+                    for (let item of resultData200)
+                        result200!.push(Relationclass.fromJS(item));
+                }
+                else {
+                    result200 = <any>null;
+                }
+                return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+                return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<Relationclass[]>(null as any);
+    }
+
+    /**
      * Get a relation class by uuid
      * @param relClasseUuid The uuid of a relation class
      * @return Successful operation
@@ -3234,6 +3330,52 @@ export class FetchHelper implements ICustomElementViewModel {
             });
         }
         return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * Get all ports
+     */
+    portsAllGET(): Promise<Port[]> {
+        let url_ = this.baseUrl + "/metamodel/ports";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                "authorization": "Bearer " + this.globalObjectInstance.accessToken
+            }
+        };
+
+        this.logger.log('API call on ' + url_, 'api')
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPortsAllGet(_response);
+        });
+    }
+
+    protected processPortsAllGet(response: Response): Promise<Port[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+                let result200: any = null;
+                let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+                if (Array.isArray(resultData200)) {
+                    result200 = [] as any;
+                    for (let item of resultData200)
+                        result200!.push(Port.fromJS(item));
+                }
+                else {
+                    result200 = <any>null;
+                }
+                return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+                return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<Port[]>(null as any);
     }
 
     /**
@@ -4098,7 +4240,7 @@ export class FetchHelper implements ICustomElementViewModel {
      * @return Successful operation
      */
     attributeTypeGET(attributeTypeUUID: string): Promise<AttributeType> {
-        let url_ = this.baseUrl + "/metamodel/attributeType/{AttributeTypeUUID}";
+        let url_ = this.baseUrl + "/metamodel/attributeTypes/{AttributeTypeUUID}";
         if (attributeTypeUUID === undefined || attributeTypeUUID === null)
             throw new Error("The parameter 'attributeTypeUUID' must be defined.");
         url_ = url_.replace("{AttributeTypeUUID}", encodeURIComponent("" + attributeTypeUUID));
@@ -4157,7 +4299,7 @@ export class FetchHelper implements ICustomElementViewModel {
      * @return Successful operation
      */
     attributeTypePATCH(attributeTypeUUID: string, body: AttributeType): Promise<AttributeType> {
-        let url_ = this.baseUrl + "/metamodel/attributeType/{AttributeTypeUUID}";
+        let url_ = this.baseUrl + "/metamodel/attributeTypes/{AttributeTypeUUID}";
         if (attributeTypeUUID === undefined || attributeTypeUUID === null)
             throw new Error("The parameter 'attributeTypeUUID' must be defined.");
         url_ = url_.replace("{AttributeTypeUUID}", encodeURIComponent("" + attributeTypeUUID));
@@ -4219,7 +4361,7 @@ export class FetchHelper implements ICustomElementViewModel {
      * @return Attribute type deleted successfully
      */
     attributeTypeDELETE2(attributeTypeUUID: string): Promise<void> {
-        let url_ = this.baseUrl + "/metamodel/attributeType/{AttributeTypeUUID}";
+        let url_ = this.baseUrl + "/metamodel/attributeTypes/{AttributeTypeUUID}";
         if (attributeTypeUUID === undefined || attributeTypeUUID === null)
             throw new Error("The parameter 'attributeTypeUUID' must be defined.");
         url_ = url_.replace("{AttributeTypeUUID}", encodeURIComponent("" + attributeTypeUUID));
@@ -7074,7 +7216,7 @@ export class FetchHelper implements ICustomElementViewModel {
      * @return attribute instance updated successfully
      */
     attributeInstancesPATCH(attributeUUID: string, body: AttributeInstance): Promise<AttributeInstance> {
-        let url_ = this.baseUrl + "/instances/attributeInstances/{AttributeUUID}";
+        let url_ = this.baseUrl + "/instances/attributesInstances/{AttributeUUID}";
         if (attributeUUID === undefined || attributeUUID === null)
             throw new Error("The parameter 'attributeUUID' must be defined.");
         url_ = url_.replace("{AttributeUUID}", encodeURIComponent("" + attributeUUID));
@@ -7399,6 +7541,107 @@ export class FetchHelper implements ICustomElementViewModel {
         this.logger.log('API call on ' + url_, 'api')
         await this.http.fetch(url_, options_);
     }
+
+    /**
+     * Patch Bendppoint instance
+     * @param uuid The uuid of a bendpoint instance
+     * @param body to create a bendpoint instance
+     * @return bendpoint instance updated successfully
+     */
+    bendpointInstancePATCH(uuid: string, body: ClassInstance): Promise<ClassInstance> {
+        let url_ = this.baseUrl + "/instances/bendpointsInstances/{uuid}";
+        if (uuid === undefined || uuid === null)
+            throw new Error("The parameter 'uuid' must be defined.");
+        url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "authorization": "Bearer " + this.globalObjectInstance.accessToken
+            }
+        };
+
+        this.logger.log('API call on ' + url_, 'api')
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processBendpointInstancePATCH(_response);
+        });
+    }
+
+    protected processBendpointInstancePATCH(response: Response): Promise<ClassInstance> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 201) {
+            return response.text().then((_responseText) => {
+                let result201: any = null;
+                let resultData201 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+                result201 = ClassInstance.fromJS(resultData201);
+                return result201;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+                return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ClassInstance>(null as any);
+    }
+
+    /**
+     * Delete Bendpoint instance
+     * @param uuid The uuid of a bendpoint instance
+     * @return bendpoint instance deleted successfully
+     */
+    bendpointInstanceDELETE(uuid: string): Promise<ClassInstance[]> {
+        let url_ = this.baseUrl + "/instances/bendpointsInstances/{uuid}";
+        if (uuid === undefined || uuid === null)
+            throw new Error("The parameter 'uuid' must be defined.");
+        url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+                "Accept": "application/json",
+                "authorization": "Bearer " + this.globalObjectInstance.accessToken
+            }
+        };
+
+        this.logger.log('API call on ' + url_, 'api')
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processBendpointInstanceDELETE(_response);
+        });
+    }
+
+    protected processBendpointInstanceDELETE(response: Response): Promise<ClassInstance[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 201) {
+            return response.text().then((_responseText) => {
+                let result201: any = null;
+                let resultData201 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+                if (Array.isArray(resultData201)) {
+                    result201 = [] as any;
+                    for (let item of resultData201)
+                        result201!.push(ClassInstance.fromJS(item));
+                }
+                else {
+                    result201 = <any>null;
+                }
+                return result201;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+                return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ClassInstance[]>(null as any);
+    }
+
 }
 
 class ApiException extends Error {

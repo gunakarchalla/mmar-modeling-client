@@ -83,7 +83,8 @@ export class VizrepUpdateChecker {
 
     // get the meta attribute name
     const metaAttributeUUID = attributeInstance.uuid_attribute;
-    const metaAttributeName = (await this.metaUtility.getMetaAttribute(metaAttributeUUID)).name;
+    const metaAttribute = await this.metaUtility.getMetaAttribute(metaAttributeUUID);
+    const metaAttributeName = metaAttribute? metaAttribute.name : null;
 
     // check if the meta attribute is referenced in the geometry attribute
     // we only update the vizrep if the meta attribute is referenced in the geometry attribute 

@@ -43,13 +43,12 @@ export class DialogReferenceAttribute {
     private allowedSceneInstances: { sceneInstance: SceneInstance, parentRole: Role }[] = [];
 
     constructor(
-        private golbalObjectInstance: GlobalDefinition,
+        private globalObjectInstance: GlobalDefinition,
         private metaUtility: MetaUtility,
         private instanceCreationHandler: InstanceCreationHandler,
         private InstanceUtility: InstanceUtility,
         private logger: Logger,
         private statechangeAlgorithms: StatechangeAlgorithms,
-        private globalObjectInstance: GlobalDefinition,
         private instanceUtility: InstanceUtility,
         private hybridAlgorithmsService: HybridAlgorithmsService,
         private eventAggregator: EventAggregator,
@@ -72,11 +71,11 @@ export class DialogReferenceAttribute {
     //set meta information depending on current selected object (CalssInstance or PortInstance)
     async setMetaInformation() {
         const attributeUUID: UUID = this.attributeInstance.uuid_attribute;
-        if (this.golbalObjectInstance.current_class_instance) {
-            this.currentClass = await this.metaUtility.getMetaClass(this.golbalObjectInstance.current_class_instance.uuid_class);
+        if (this.globalObjectInstance.current_class_instance) {
+            this.currentClass = await this.metaUtility.getMetaClass(this.globalObjectInstance.current_class_instance.uuid_class);
         }
-        if (this.golbalObjectInstance.current_port_instance) {
-            this.currentPort = await this.metaUtility.getMetaPort(this.golbalObjectInstance.current_port_instance.uuid_port);
+        if (this.globalObjectInstance.current_port_instance) {
+            this.currentPort = await this.metaUtility.getMetaPort(this.globalObjectInstance.current_port_instance.uuid_port);
         }
         if (this.currentClass) {
             this.currentAttribute = this.currentClass.attributes.find(attribute => attribute.uuid === attributeUUID);
@@ -221,7 +220,7 @@ export class DialogReferenceAttribute {
         this.attributeInstance.role_instance_from = null;
 
         //find role in globalObjectInstance.roleInstances and delete it
-        this.golbalObjectInstance.role_instances = this.golbalObjectInstance.role_instances.filter(roleInstance => roleInstance.uuid !== this.referenceRoleInstance.uuid);
+        this.globalObjectInstance.role_instances = this.globalObjectInstance.role_instances.filter(roleInstance => roleInstance.uuid !== this.referenceRoleInstance.uuid);
 
         this.setMetaInformation();
 

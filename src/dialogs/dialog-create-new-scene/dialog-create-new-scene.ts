@@ -8,6 +8,7 @@ import { GlobalClassObject } from 'resources/global_class_object';
 import { Logger } from 'resources/services/logger';
 import { generateUUID } from 'three/src/math/MathUtils';
 import { bindable, EventAggregator } from 'aurelia';
+import { PersistencyHandler } from 'resources/persistency_handler';
 
 
 export class DialogCreateNewScene {
@@ -25,7 +26,8 @@ export class DialogCreateNewScene {
         private globalClassObject: GlobalClassObject,
         private globalRelationclassObject: GlobalRelationclassObject,
         private logger: Logger,
-        private eventAggregator: EventAggregator
+        private eventAggregator: EventAggregator,
+        private persistencyHandler: PersistencyHandler
     ) { }
 
     async attached() {
@@ -42,6 +44,11 @@ export class DialogCreateNewScene {
 
             await this.sceneInitiator.sceneInit();
             await this.instanceUtility.createTabContextSceneInstance(sceneInstance);
+
+            // post the new sceneInstance to the DB if autoSave is enabled
+            if (this.globalObjectInstance.autoSave) {
+                await this.persistencyHandler.persistSceneInstanceToDB();
+            }
 
             // check if new SceneInstances is from an importet sceneType
             for (const importSceneType of this.globalObjectInstance.importSceneTypes) {

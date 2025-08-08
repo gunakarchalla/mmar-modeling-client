@@ -21,6 +21,7 @@ import { ConsistencyChecker } from './consistency_checker';
 import { Logger } from './services/logger';
 import { ExpressionUtility } from './expression_utility';
 import { SimulationUtility } from './services/simulation_utility';
+import { PersistencyHandler } from './persistency_handler';
 
 @singleton()
 export class InteractionHandler {
@@ -56,7 +57,8 @@ export class InteractionHandler {
     private logger: Logger,
     private deletionHandler: DeletionHandler,
     private expression: ExpressionUtility,
-    private simulationUtility: SimulationUtility
+    private simulationUtility: SimulationUtility,
+    private persistencyHandler: PersistencyHandler
   ) { }
 
 
@@ -189,19 +191,19 @@ export class InteractionHandler {
     this.globalObjectInstance.render = true;
   }
 
-/**
-   * Handles the transition to "View Mode" in the application.
-   * 
-   * This method detaches objects from the transform controls, sets up the objects
-   * to be intersected by the raycaster, and checks if any objects are intersected.
-   * If an object is intersected, the application switches to "Selection Mode".
-   * Otherwise, a log message is displayed prompting the user to select an object.
-   * 
-   * @remarks
-   * - The `transformControls` are detached to ensure no objects are being manipulated.
-   * - The `raycaster` is used to detect intersections with draggable objects.
-   * - The global state is updated based on whether an object is intersected.
-   */
+  /**
+     * Handles the transition to "View Mode" in the application.
+     * 
+     * This method detaches objects from the transform controls, sets up the objects
+     * to be intersected by the raycaster, and checks if any objects are intersected.
+     * If an object is intersected, the application switches to "Selection Mode".
+     * Otherwise, a log message is displayed prompting the user to select an object.
+     * 
+     * @remarks
+     * - The `transformControls` are detached to ensure no objects are being manipulated.
+     * - The `raycaster` is used to detect intersections with draggable objects.
+     * - The global state is updated based on whether an object is intersected.
+     */
   async onViewMode() {
     //detach objects from transformcontrols
     this.globalObjectInstance.transformControls.detach()
@@ -221,21 +223,21 @@ export class InteractionHandler {
     }
   }
 
-    /**
-   * Handles the drawing mode interaction in the application. This method is responsible for:
-   * - Determining intersections with objects in the scene using a raycaster.
-   * - Creating and positioning class instances based on the selected class and intersection point.
-   * - Parsing and executing visualization representation (VizRep) functions for the created class instance.
-   * - Creating and attaching port objects for each port instance of the class instance.
-   * - Managing the global state and rendering updates.
-   *
-   * @remarks
-   * - The method uses raycasting to detect intersections with objects in the scene, specifically the plane object.
-   * - If a valid intersection is found and a metaclass is selected, a new class instance is created and added to the scene.
-   * - The method dynamically evaluates geometry and visualization functions stored in the metamodel. (vizRep)
-   * - If any, for each port instance of the created class instance, a corresponding port object is created, visualized, and attached to the class object.
-   * - The method also handles resetting and updating the global state and rendering flags.
-   */
+  /**
+ * Handles the drawing mode interaction in the application. This method is responsible for:
+ * - Determining intersections with objects in the scene using a raycaster.
+ * - Creating and positioning class instances based on the selected class and intersection point.
+ * - Parsing and executing visualization representation (VizRep) functions for the created class instance.
+ * - Creating and attaching port objects for each port instance of the class instance.
+ * - Managing the global state and rendering updates.
+ *
+ * @remarks
+ * - The method uses raycasting to detect intersections with objects in the scene, specifically the plane object.
+ * - If a valid intersection is found and a metaclass is selected, a new class instance is created and added to the scene.
+ * - The method dynamically evaluates geometry and visualization functions stored in the metamodel. (vizRep)
+ * - If any, for each port instance of the created class instance, a corresponding port object is created, visualized, and attached to the class object.
+ * - The method also handles resetting and updating the global state and rendering flags.
+ */
   async onDrawingMode() {
 
     //objects to intersect with this raycaster
@@ -299,7 +301,6 @@ export class InteractionHandler {
         let classObject3D = await this.gc.drawVizRep(new THREE.Vector3(x, y, z), class_instance);
         this.globalObjectInstance.render = true;
 
-
         //------------------------------------
         //for each port_instance of the class_instance we create a port_object
         //we iterate over the port_instances of the class_instance
@@ -337,6 +338,12 @@ export class InteractionHandler {
           this.globalObjectInstance.render = true;
         }
 
+        // set variable to patch the sceneInstance to the DB if autoSave is enabled
+        // this is done after a new instance has been created
+        if (this.globalObjectInstance.autoSave) {
+          //await this.persistencyHandler.persistSceneInstanceToDB();
+          this.globalObjectInstance.doSceneInstancePatch = true;
+        }
 
       }
     } else if (this.intersects.length > 0 && this.intersects.length >= 2 && this.clickedButton == 0) {
@@ -349,21 +356,22 @@ export class InteractionHandler {
     }
   }
 
-    /**
-   * Handles the interaction logic for creating and managing relation classes in drawing mode.
-   * This method is triggered when the user interacts with the canvas in drawing mode, and it
-   * processes clicks to create, modify, or finalize relation class instances and their associated
-   * roles and bendpoints.
-   *
-   * The method performs the following actions based on the user's interaction:
-   * - Detects intersections with objects in the scene using a raycaster.
-   * - checks if it is allowed to create a relation class instance and or ...
-   *    - Creates relation class instances and their associated roles (`role_from`),
-   *    - Adds bendpoints to relation class instances when clicking on the plane,
-   *    - Finalizes relation class instances when clicking on an element.
-   * - Resets the state or deletes relation class instances on right-click.
-   */
+  /**
+ * Handles the interaction logic for creating and managing relation classes in drawing mode.
+ * This method is triggered when the user interacts with the canvas in drawing mode, and it
+ * processes clicks to create, modify, or finalize relation class instances and their associated
+ * roles and bendpoints.
+ *
+ * The method performs the following actions based on the user's interaction:
+ * - Detects intersections with objects in the scene using a raycaster.
+ * - checks if it is allowed to create a relation class instance and or ...
+ *    - Creates relation class instances and their associated roles (`role_from`),
+ *    - Adds bendpoints to relation class instances when clicking on the plane,
+ *    - Finalizes relation class instances when clicking on an element.
+ * - Resets the state or deletes relation class instances on right-click.
+ */
   async onDrawingModeRelationclass() {
+
     //objects to intersect with this raycaster
     this.objects = this.globalObjectInstance.dragObjects;
     //array with objects, that intersect with the ray (dragObjects)
@@ -403,6 +411,12 @@ export class InteractionHandler {
       && !this.globalStateObject.activeStateLine
       && this.clickedButton == 0
     ) {
+      
+      // set variable to false to make sure that there is no update during the creation of a relationclassinstance if autoSave is enabled
+      if (this.globalObjectInstance.autoSave) {
+        this.globalObjectInstance.doSceneInstancePatch = false;
+      }
+
       //reset gc instance
       await this.gc.resetInstance();
 
@@ -498,6 +512,12 @@ export class InteractionHandler {
     //if click on plane
     //-----------------------
     else if (this.intersects.length == 0 && this.globalStateObject.activeStateLine && this.clickedButton == 0) {
+
+      // set variable to false to make sure that there is no update during the creation of a relationclassinstance if autoSave is enabled
+      if (this.globalObjectInstance.autoSave) {
+        this.globalObjectInstance.doSceneInstancePatch = false;
+      }
+
       const newPos = this.globalObjectInstance.mousePointer3d.position.clone();
 
       //we create an instance of the BendPoint_Class
@@ -607,6 +627,12 @@ export class InteractionHandler {
       //role_to.uuid_reference_relationclass_instance = relationclass_instance.uuid;
       relationclass_instance.role_instance_to = role_to;
 
+      // set variable to patch the sceneInstance to the DB if autoSave is enabled
+      // this is done after a new instance has been created
+      if (this.globalObjectInstance.autoSave) {
+        //await this.persistencyHandler.persistSceneInstanceToDB();
+        this.globalObjectInstance.doSceneInstancePatch = true;
+      }
     }
     //if right click and there is no relationclass_instance in creation reset state to view mode
     else if (this.clickedButton == 2 && !this.globalStateObject.activeStateLine) {
@@ -618,7 +644,7 @@ export class InteractionHandler {
       //delete relationclassinstance
       let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
       let index = sceneInstance.relationclasses_instances.findIndex(relationclassInstance => relationclassInstance.uuid == this.globalRelationclassObject.relationclassInstanceInCreation.uuid);
-      this.deletionHandler.deleteRelationclassInstance(sceneInstance.relationclasses_instances[index], index);
+      await this.deletionHandler.deleteRelationclassInstance(sceneInstance.relationclasses_instances[index], index);
       this.globalRelationclassObject.relationclassInstanceInCreation = undefined;
       this.globalStateObject.setState(3)
     }

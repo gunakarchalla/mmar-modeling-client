@@ -13,16 +13,25 @@
         <mdc-text-field readonly class="mdc-text-field" outlined label="UUID" value.bind="currentClassInstance.uuid"
             style="width: 100%;"></mdc-text-field>
         <hr style="color:silver;">
+        <mdc-text-field readonly class="mdc-text-field" outlined label="Class" value.bind="currentClassInstance.name"
+            style="width: 100%;"></mdc-text-field>
+        <hr style="color:silver;">
     </div>
     <div if.bind="currentRelationclassInstance">
         <h5>Static Attributes</h5>
         <mdc-text-field readonly class="mdc-text-field" outlined label="UUID"
             value.bind="currentRelationclassInstance.uuid" style="width: 100%;"></mdc-text-field>
         <hr style="color:silver;">
+        <mdc-text-field readonly class="mdc-text-field" outlined label="Class"
+            value.bind="currentRelationclassInstance.name" style="width: 100%;"></mdc-text-field>
+        <hr style="color:silver;">
     </div>
     <div if.bind="currentPortInstance">
         <h5>Static Attributes</h5>
         <mdc-text-field readonly class="mdc-text-field" outlined label="UUID" value.bind="currentPortInstance.uuid"
+            style="width: 100%;"></mdc-text-field>
+        <hr style="color:silver;">
+        <mdc-text-field readonly class="mdc-text-field" outlined label="Class" value.bind="currentPortInstance.name"
             style="width: 100%;"></mdc-text-field>
         <hr style="color:silver;">
     </div>
@@ -123,7 +132,7 @@
             </mdc-button>
             <mdc-dialog view-model.ref="dialog">
                 <dialog-table-attribute
-                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance"></dialog-table-attribute>
+                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance" current-port-instance.bind="currentPortInstance" current-class-instance.bind="currentClassInstance"></dialog-table-attribute>
             </mdc-dialog>
         </div>
         <hr style="color:silver;">

@@ -878,6 +878,8 @@ export class GraphicContext {
 
     //reset gc
     await this.resetInstance();
+
+    return obj;
   }
 
   async updateVizRepRelClass(relationclass_instance: RelationclassInstance) {
@@ -939,6 +941,7 @@ export class GraphicContext {
     this.labels_rel_middle_objects = {};
     this.attached_ports = {};
     this.button3D = {};
+    this.current_instance_object = null;
   }
 
 

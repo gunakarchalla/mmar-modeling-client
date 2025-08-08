@@ -1,5 +1,6 @@
 <import from="./../camera-toggle/camera-toggle"></import>
 <import from="./../../dialogs/user-management/user-management"></import>
+<import from="./../auto-save/auto-save"></import>
 
 <mdc-button if.bind="!globalObjectInstance.accessToken" outlined
     click.trigger="userManagement.open()">Login</mdc-button>
@@ -14,6 +15,8 @@
 <button mdc-button disabled mdc-tooltip="zoom out" click.trigger="zoomOut()">
     <mdc-icon>zoom_out</mdc-icon>
 </button>
+<a class="vl"></a>
+<auto-save></auto-save>
 <a class="vl"></a>
 <button mdc-button disabled mdc-tooltip="undo" click.trigger="undo()">
     <mdc-icon>undo</mdc-icon>
