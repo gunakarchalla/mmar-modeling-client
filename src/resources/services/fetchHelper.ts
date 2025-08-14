@@ -5,7 +5,6 @@ import { ICustomElementViewModel } from 'aurelia';
 import { Class, Metamodel, SceneType, Attribute, Relationclass, Role, Port, AttributeType, SceneInstance, ClassInstance, RelationclassInstance, RoleInstance, PortInstance, AttributeInstance, Procedure, UUID } from '../../../../mmar-global-data-structure';
 import { IHydratedController } from '@aurelia/runtime-html';
 import { GlobalDefinition } from 'resources/global_definitions';
-import { fstat } from 'fs';
 
 export class FetchHelper implements ICustomElementViewModel {
 
