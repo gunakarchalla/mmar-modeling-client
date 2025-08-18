@@ -3,6 +3,8 @@ import { GlobalDefinition } from './global_definitions';
 import { InstanceUtility } from './services/instance_utility';
 import { AttributeInstance, ClassInstance, RelationclassInstance, UUID } from '../../../mmar-global-data-structure';
 import { MetaUtility } from './services/meta_utility';
+import { FileUtility } from './services/file_utility';
+import { FetchHelper } from './services/fetchHelper';
 
 @singleton()
 export class ExpressionUtility {
@@ -12,6 +14,8 @@ export class ExpressionUtility {
         private instanceUtility: InstanceUtility,
         private eventAggregator: EventAggregator,
         private metaUtility: MetaUtility,
+        private fileUtility: FileUtility,
+        private fetchHelper: FetchHelper
     ) {
     }
 
@@ -215,14 +219,15 @@ export class ExpressionUtility {
         }
     }
 
-    /**
-     * Retrieves the file associated with a given UUID.
-     * 
-     * @param {UUID} fileUUID - The UUID of the file to retrieve.
-     * @returns {Promise<string>} - A promise resolving to the file content as a string.
-     */
-    async getFile(fileUUID: UUID): Promise<string> {
-        const str = this.metaUtility.getFileByUUID(fileUUID);
+    async getImageByUUID(fileUUID: UUID): Promise<string> {
+        const file = this.metaUtility.getFileByUUID(fileUUID);
+        const str = await this.fileUtility.FiletoDataUrl(file);
+        return str;
+    }
+
+    async getGltfByUUID(fileUUID: UUID): Promise<string> {
+        const file = this.metaUtility.getFileByUUID(fileUUID);
+        const str = file.text();
         return str;
     }
 }

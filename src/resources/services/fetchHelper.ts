@@ -7415,9 +7415,28 @@ export class FetchHelper implements ICustomElementViewModel {
         return Promise.resolve<AttributeType[]>(null as any);
     }
 
+    async getFiles() {
+        let url_ = this.baseUrl + "/metamodel/files";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                "authorization": "Bearer " + this.globalObjectInstance.accessToken
+            }
+        };
+
+        this.logger.log('API call on ' + url_, 'api')
+        const response = await this.http.fetch(url_, options_);
+        const responseText = await response.text();
+        let result = JSON.parse(responseText);
+        return result;
+    }
+
     // Function to download a specific file from database via get api
     async getFileByUUID(uuid: UUID): Promise<File> {
-        let url_ = this.baseUrl + "/files/{uuid}";
+        let url_ = this.baseUrl + "/metamodel/files/{uuid}";
         if (uuid === undefined || uuid === null)
             throw new Error("The parameter 'uuid' must be defined.");
         url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
@@ -7438,8 +7457,18 @@ export class FetchHelper implements ICustomElementViewModel {
     }
 
     // Function to post a file to database via post api
-    async postFile(file: File): Promise<any> {
-        let url_ = this.baseUrl + "/files";
+    async postFile(file: File, compress: boolean = false, targetWidth?: number, quality?: number): Promise<any> {
+        let url_ = this.baseUrl + "/metamodel/files";
+
+        // If compress is true, then add query parameters
+        if (compress) {
+            const queryParams = new URLSearchParams();
+            queryParams.append("compress", compress.toString());
+            queryParams.append("targetWidth", targetWidth.toString());
+            queryParams.append("quality", quality.toString());
+            url_ += `?${queryParams.toString()}`;
+        }
+
         url_ = url_.replace(/[?&]$/, "");
 
         const formData = new FormData();
@@ -7460,11 +7489,20 @@ export class FetchHelper implements ICustomElementViewModel {
     }
 
     // Function to patch a specific file in database via patch api
-    async patchFileByUUID(uuid: UUID, file: File): Promise<string> {
-        let url_ = this.baseUrl + "/files/{uuid}";
+    async patchFileByUUID(uuid: UUID, file: File, compress: boolean = false, targetWidth?: number, quality?: number): Promise<string> {
+        let url_ = this.baseUrl + "/metamodel/files/{uuid}";
         if (uuid === undefined || uuid === null)
             throw new Error("The parameter 'uuid' must be defined.");
         url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
+
+        // If compress is true, then add query parameters
+        if (compress) {
+            const queryParams = new URLSearchParams();
+            queryParams.append("compress", compress.toString());
+            queryParams.append("targetWidth", targetWidth.toString());
+            queryParams.append("quality", quality.toString());
+            url_ += `?${queryParams.toString()}`;
+        }
         url_ = url_.replace(/[?&]$/, "");
 
         let formData = new FormData();
@@ -7486,7 +7524,7 @@ export class FetchHelper implements ICustomElementViewModel {
 
     // Function to delete a specific file in database via delete api
     async deleteFileByUUID(uuid: UUID): Promise<void> {
-        let url_ = this.baseUrl + "/files/{uuid}";
+        let url_ = this.baseUrl + "/metamodel/files/{uuid}";
         if (uuid === undefined || uuid === null)
             throw new Error("The parameter 'uuid' must be defined.");
         url_ = url_.replace("{uuid}", encodeURIComponent("" + uuid));
@@ -7501,26 +7539,6 @@ export class FetchHelper implements ICustomElementViewModel {
 
         this.logger.log('API call on ' + url_, 'api')
         await this.http.fetch(url_, options_);
-    }
-
-    // Function to get all file uuids from database via get api
-    async getAllFileUUIDs(): Promise<UUID[]> {
-        let url_ = this.baseUrl + "/files/alluuids";
-        url_ = url_.replace(/[?&]$/, "");
-
-        let options_: RequestInit = {
-            method: "GET",
-            headers: {
-                "Accept": "application/json",
-                "authorization": "Bearer " + this.globalObjectInstance.accessToken
-            }
-        };
-
-        this.logger.log('API call on ' + url_, 'api')
-        const response = await this.http.fetch(url_, options_);
-        const responseText = await response.text();
-        let result = JSON.parse(responseText);
-        return result["uuids"];
     }
 
     /**

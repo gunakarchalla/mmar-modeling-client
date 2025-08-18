@@ -6,7 +6,8 @@
         <mdc-card class="demo-card"
             repeat.for="class of globalObjectInstance.tabContext[globalObjectInstance.selectedTab].sceneType.relationclasses"
             id=${class.uuid} click.trigger="onButtonClicked(class.uuid)" name=${class.name}>
-            <mdc-card-primary-action mdc-tooltip="value.bind: class.name" style=" align-items: center; height: 100%; text-align: center;">
+            <mdc-card-primary-action mdc-tooltip="value.bind: class.name"
+                style=" align-items: center; height: 100%; text-align: center;">
                 <mdc-image-list-item src.bind=class.icon></mdc-image-list-item>
                 <div style="font-size: 0.7em; word-break: break-word;">${class.name}</div>
             </mdc-card-primary-action>

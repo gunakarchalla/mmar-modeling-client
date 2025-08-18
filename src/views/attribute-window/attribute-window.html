@@ -78,6 +78,10 @@
                 style="width: 100%;" show.bind="isUUID(enhancedAttributeInstance.attributeInstance.value)">
                 Delete File
             </mdc-button>
+            <mdc-button outlined click.trigger="downloadFile(enhancedAttributeInstance.attributeInstance)"
+                style="width: 100%;" show.bind="isUUID(enhancedAttributeInstance.attributeInstance.value)">
+                Download
+            </mdc-button>
         </div>
 
         <!-- if enum -> facets must be a value the make dropdown  -->

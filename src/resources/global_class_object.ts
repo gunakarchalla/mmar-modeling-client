@@ -3,6 +3,7 @@ import { UUID } from '../../../mmar-global-data-structure';
 import { GlobalDefinition } from './global_definitions';
 import { Logger } from './services/logger';
 import { MetaUtility } from './services/meta_utility';
+import { FileUtility } from './services/file_utility';
 
 @singleton()
 export class GlobalClassObject {
@@ -16,7 +17,8 @@ export class GlobalClassObject {
   constructor(
     private globalObjectInstance: GlobalDefinition,
     private logger: Logger,
-    private metaUtility: MetaUtility
+    private metaUtility: MetaUtility,
+    private fileUtility: FileUtility
   ) {
     this.classNames = [];
     this.classGeometry = [];
@@ -77,10 +79,10 @@ export class GlobalClassObject {
           map = string;
           return map;
         }
-        else if (string.endsWith('getFile(')) {
+        else if (string.endsWith('getImageByUUID(')) {
           next = true;
         } else if (next) {
-          const str = await this.metaUtility.getFileByUUID(string);
+          const str = this.metaUtility.Files.get(string)[1];
           map = str;
           break;
         }

@@ -10,6 +10,7 @@ import { VizrepUpdateChecker } from 'resources/services/vizrep_update_checker';
 import { GraphicContext } from 'resources/graphic_context';
 import { validate as uuidValidate } from 'uuid';
 import { FetchHelper } from 'resources/services/fetchHelper';
+import { FileUtility } from 'resources/services/file_utility';
 
 export class AttributeWindow {
 
@@ -48,7 +49,8 @@ export class AttributeWindow {
     private hybridAlgorithmsService: HybridAlgorithmsService,
     private vizrepUpdateChecker: VizrepUpdateChecker,
     private gc: GraphicContext,
-    private fetchHelper: FetchHelper
+    private fetchHelper: FetchHelper,
+    private fileUtility: FileUtility
   ) {
   }
 
@@ -62,8 +64,36 @@ export class AttributeWindow {
   async deleteFile(attributeInstance: AttributeInstance) {
     if (this.isUUID(attributeInstance.value)) {
       await this.fetchHelper.deleteFileByUUID(attributeInstance.value);
+      this.metaUtility.deleteFileByUUID(attributeInstance.value);
       const metaAttribute: Attribute = await this.metaUtility.getMetaAttribute(attributeInstance.uuid_attribute);
       attributeInstance.value = metaAttribute.default_value;
+    }
+  }
+
+  async downloadFile(attributeInstance: AttributeInstance) {
+    if (this.isUUID(attributeInstance.value)) {
+      let file = this.metaUtility.getFileByUUID(attributeInstance.value);
+
+      // If file is not in local cache, fetch it from server
+      if (!file) {
+        try {
+          file = await this.fetchHelper.getFileByUUID(attributeInstance.value);
+          // Store it in local cache for future use
+          this.metaUtility.setFile(attributeInstance.value, file);
+        } catch (error) {
+          this.logger.log(`Failed to download file: ${error}`, 'error');
+          return;
+        }
+      }
+
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   }
 
