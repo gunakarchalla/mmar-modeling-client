@@ -225,9 +225,9 @@ export class ExpressionUtility {
         return str;
     }
 
-    async getGltfByUUID(fileUUID: UUID): Promise<string> {
+    async getGltfByUUID(fileUUID: UUID): Promise<ArrayBuffer> {
         const file = this.metaUtility.getFileByUUID(fileUUID);
-        const str = file.text();
+        const str = await file.arrayBuffer();
         return str;
     }
 }
