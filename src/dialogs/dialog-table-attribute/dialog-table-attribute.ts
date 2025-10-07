@@ -3,9 +3,10 @@ import { InstanceCreationHandler } from "resources/instance_creation_handler";
 import { MetaUtility } from "resources/services/meta_utility";
 import { AttributeInstance, Attribute, AttributeType, UUID, Class, ClassInstance, PortInstance } from "../../../../mmar-global-data-structure";
 import { ColumnStructure } from "../../../../mmar-global-data-structure/models/meta/Metamodel_columns.structure";
-import { bindable } from "aurelia";
+import { bindable, valueConverter } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
+import { ValueConverter } from "aurelia";
 
 export class DialogTableAttribute {
 
@@ -28,6 +29,9 @@ export class DialogTableAttribute {
     //all cells of the table
     private tableAttributes: AttributeInstance[] = [];
 
+    private values: any[][] = [[]];
+    private defaultValues: any[] = [];
+    private facetsAll: string[][] = [];
 
     constructor(
         private globalObjectInstance: GlobalDefinition,
@@ -89,6 +93,33 @@ export class DialogTableAttribute {
             }
         }
 
+        console.log('columns', this.columns);
+
+        for (let i in this.columns) {
+            const column = this.columns[i];
+
+            if (column.ui_component == "dropdown" && column.attribute) {
+                this.facetsAll.push(column.attribute.facets.split("|"));
+                column.attribute.default_value ? this.values[0].push(column.attribute.default_value) : this.values[0].push(null);
+
+            } else if (column.ui_component == "slider" && column.attribute) {
+                this.facetsAll.push(column.attribute.facets.split("|"));
+                column.attribute.default_value ? this.values[0].push(parseFloat(column.attribute.default_value)) : this.values[0].push((parseFloat(this.facetsAll[i][0]) + parseFloat(this.facetsAll[i][1])) / 2);
+
+            } else if (column.ui_component == "button" && column.attribute) {
+                this.facetsAll.push([]);
+                this.values[0].push([null]);
+
+            } else {
+                this.facetsAll.push([]);
+                this.values[0].push([null]);
+            }
+        }
+        this.defaultValues = this.values[0].slice();
+
+        console.log('facetsAll', this.facetsAll);
+        console.log('values', this.values);
+
         let rowCount = 0;
         for (let i = 0; i < this.tableAttributes.length; i += this.columns.length) {
             this.rows.push([]);
@@ -113,6 +144,7 @@ export class DialogTableAttribute {
     async createRow() {
         //Count the number of rows in the table
         let numRows = await this.countRows();
+        this.values.push(this.defaultValues.slice());
 
         //Create a new row
         for (const column of this.has_table_attribute) {
@@ -157,6 +189,8 @@ export class DialogTableAttribute {
 
     async fieldChange(attributeInstance: AttributeInstance) {
 
+        console.log('field change:', attributeInstance.value);
+
         //update attribute value
         attributeInstance.value = attributeInstance.value.toString();
 
@@ -185,5 +219,12 @@ export class DialogTableAttribute {
         return Promise.resolve();
     }
 
+    async uiChange(val: any, attributeInstance: AttributeInstance) {
+
+        //update attribute value
+        attributeInstance.value = val.toString();
+
+        await this.fieldChange(attributeInstance);
+    }
 
 }

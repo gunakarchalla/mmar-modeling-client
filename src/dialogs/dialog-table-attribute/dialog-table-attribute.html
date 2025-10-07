@@ -6,16 +6,43 @@
         <tr style="border: 0.75px solid;">
           <th repeat.for="col of table" style="border: 0.75px solid;">${col[0].attribute.name}</th>
         </tr>
-        <tr repeat.for="row of rows" style="border: 0.75px solid;">
-          <td repeat.for="cell of row" style="border: 0.75px solid;">
-            <!-- <input type="text" value.bind="cell.value" > -->
-            <mdc-text-field class="mdc-text-field" value.bind="cell.value" change.trigger="fieldChange(cell)" ></mdc-text-field>
+        <!-- <tr repeat.for="row of rows" style="border: 0.75px solid;"> -->
+        <tr repeat.for="i of rows.length" style="border: 0.75px solid;">
+          <td repeat.for="j of rows[i].length" style="border: 0.75px solid;">
+
+            <!-- if input type is text -->
+            <mdc-text-field if.bind="columns[j].ui_component=='text' || columns[j].ui_component=='Text'" class="mdc-text-field" value.bind="rows[i][j].value" change.trigger="fieldChange(rows[i][j])" ></mdc-text-field>
+
+            <!-- if input type is slider -->
+            <div style="display: flex; flex-direction: row; align-items: center; width: 100%;" if.bind="columns[j].ui_component=='slider'||columns[j].ui_component=='Slider'">
+              <span style="margin-right: 8px; white-space: nowrap;">Val:${values[i][j]}</span>
+              <mdc-slider style="flex: 1;" min.bind="facetsAll[j][0]" max.bind="facetsAll[j][1]" value.bind="values[i][j]" step.bind="facetsAll[j][2] || 1" click.trigger="uiChange(values[i][j],rows[i][j])" id="slider-${j}"></mdc-slider>
+            </div>
+
+            <!-- if input type is dropdown -->
+            <mdc-select if.bind="columns[j].ui_component=='dropdown' || columns[j].ui_component=='Dropdown'" label.bind="label"
+                value.bind="values[i][j]"
+                change.trigger="uiChange(values[i][j],rows[i][j])" required
+                style="display: flex;">
+                <mdc-list>
+                    <mdc-list-item repeat.for="facet of facetsAll[j]"
+                        value.bind="facet">${facet}</mdc-list-item>
+                </mdc-list>
+            </mdc-select>
+
+            <!-- if input type is button -->
+                <mdc-button if.bind="columns[j].ui_component=='button' || columns[j].ui_component=='Button'" outlined click.trigger="dialog.open()"
+                style="width: 100%;">${enhancedAttributeInstance.attributeInstance.name}
+            </mdc-button>
+            <mdc-dialog view-model.ref="dialog">
+                <dialog-table-attribute
+                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance" current-port-instance.bind="currentPortInstance" current-class-instance.bind="currentClassInstance"></dialog-table-attribute>
+            </mdc-dialog>
+
+            </mdc-select>
           </td>
         </tr>
-      </table>
-
-
-      
+      </table>  
        
 </mdc-dialog-content>
 <mdc-dialog-actions>
