@@ -6,13 +6,13 @@ import { ColumnStructure } from "../../../../mmar-global-data-structure/models/m
 import { bindable, valueConverter } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
-import { ValueConverter } from "aurelia";
 
 export class DialogTableAttribute {
 
     @bindable attributeInstance: AttributeInstance = null;
     @bindable currentClassInstance: ClassInstance = null;
     @bindable currentPortInstance: PortInstance = null;
+    @bindable attribute: Attribute = null;
 
     private currentAttribute: Attribute;
     private currentAttributeType: AttributeType;
@@ -65,7 +65,12 @@ export class DialogTableAttribute {
     async setMetaInformation() {
         const attributeUUID: UUID = this.attributeInstance.uuid_attribute;
         this.currentClass = await this.metaUtility.getMetaClass(this.globalObjectInstance.current_class_instance.uuid_class);
-        this.currentAttribute = this.currentClass.attributes.find(attribute => attribute.uuid === attributeUUID);
+        if (!this.attribute) {
+            this.currentAttribute = this.currentClass.attributes.find(attribute => attribute.uuid === attributeUUID);
+
+        } else {
+            this.currentAttribute = this.attribute;
+        }
         this.currentAttributeType = this.currentAttribute.attribute_type;
     }
 
@@ -93,8 +98,6 @@ export class DialogTableAttribute {
             }
         }
 
-        console.log('columns', this.columns);
-
         for (let i in this.columns) {
             const column = this.columns[i];
 
@@ -108,17 +111,17 @@ export class DialogTableAttribute {
 
             } else if (column.ui_component == "button" && column.attribute) {
                 this.facetsAll.push([]);
-                this.values[0].push([null]);
+                this.values[0].push([column.attribute]);
 
             } else {
                 this.facetsAll.push([]);
                 this.values[0].push([null]);
             }
         }
-        this.defaultValues = this.values[0].slice();
 
-        console.log('facetsAll', this.facetsAll);
-        console.log('values', this.values);
+        // console.log("globalObjectInstance.attribute_instances:", this.globalObjectInstance.attribute_instances);
+
+        this.defaultValues = this.values[0].slice();
 
         let rowCount = 0;
         for (let i = 0; i < this.tableAttributes.length; i += this.columns.length) {
@@ -188,8 +191,6 @@ export class DialogTableAttribute {
     }
 
     async fieldChange(attributeInstance: AttributeInstance) {
-
-        console.log('field change:', attributeInstance.value);
 
         //update attribute value
         attributeInstance.value = attributeInstance.value.toString();

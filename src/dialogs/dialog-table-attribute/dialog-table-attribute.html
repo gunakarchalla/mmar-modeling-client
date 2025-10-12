@@ -31,15 +31,16 @@
             </mdc-select>
 
             <!-- if input type is button -->
-                <mdc-button if.bind="columns[j].ui_component=='button' || columns[j].ui_component=='Button'" outlined click.trigger="dialog.open()"
-                style="width: 100%;">${enhancedAttributeInstance.attributeInstance.name}
+             <div style="display: flex; flex-direction: column; align-items: center; width: 100%;" if.bind="columns[j].ui_component=='button' || columns[j].ui_component=='Button'">
+                <mdc-button outlined click.trigger="dialog.open()"
+                style="width: 100%;">${rows[i][j].name}
             </mdc-button>
             <mdc-dialog view-model.ref="dialog">
                 <dialog-table-attribute
-                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance" current-port-instance.bind="currentPortInstance" current-class-instance.bind="currentClassInstance"></dialog-table-attribute>
+                    attribute-instance.bind="rows[i][j]" attribute.bind="values[i][j][0]"></dialog-table-attribute>
             </mdc-dialog>
+            </div>
 
-            </mdc-select>
           </td>
         </tr>
       </table>  
