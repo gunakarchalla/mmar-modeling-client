@@ -13,6 +13,7 @@ export class DialogTableAttribute {
     @bindable currentClassInstance: ClassInstance = null;
     @bindable currentPortInstance: PortInstance = null;
     @bindable attribute: Attribute = null;
+    @bindable currentDialog: any = null;
 
     private currentAttribute: Attribute;
     private currentAttributeType: AttributeType;
@@ -20,6 +21,9 @@ export class DialogTableAttribute {
     private table = [];
     private columns = [];
     private rows = [];
+
+    // Array to hold references to nested dialogs
+    private nestedDialogs: any[][] = [];
 
     private currentClass: Class;
 
@@ -29,8 +33,6 @@ export class DialogTableAttribute {
     //all cells of the table
     private tableAttributes: AttributeInstance[] = [];
 
-    private values: any[][] = [[]];
-    private defaultValues: any[] = [];
     private facetsAll: string[][] = [];
 
     constructor(
@@ -60,6 +62,7 @@ export class DialogTableAttribute {
         this.has_table_attribute = [];
         this.table = [];
         this.rows = [];
+        this.nestedDialogs = [];
     }
 
     async setMetaInformation() {
@@ -103,51 +106,63 @@ export class DialogTableAttribute {
 
             if (column.ui_component == "dropdown" && column.attribute) {
                 this.facetsAll.push(column.attribute.facets.split("|"));
-                column.attribute.default_value ? this.values[0].push(column.attribute.default_value) : this.values[0].push(null);
 
             } else if (column.ui_component == "slider" && column.attribute) {
                 this.facetsAll.push(column.attribute.facets.split("|"));
-                column.attribute.default_value ? this.values[0].push(parseFloat(column.attribute.default_value)) : this.values[0].push((parseFloat(this.facetsAll[i][0]) + parseFloat(this.facetsAll[i][1])) / 2);
-
-            } else if (column.ui_component == "button" && column.attribute) {
-                this.facetsAll.push([]);
-                this.values[0].push([column.attribute]);
 
             } else {
                 this.facetsAll.push([]);
-                this.values[0].push([null]);
             }
         }
-
-        // console.log("globalObjectInstance.attribute_instances:", this.globalObjectInstance.attribute_instances);
-
-        this.defaultValues = this.values[0].slice();
 
         let rowCount = 0;
         for (let i = 0; i < this.tableAttributes.length; i += this.columns.length) {
             this.rows.push([]);
+            this.nestedDialogs.push([]);
 
             //for each column
             for (let j = 0; j < this.columns.length; j++) {
                 this.rows[rowCount].push(this.tableAttributes[i + j]);
+                this.nestedDialogs[rowCount].push(null);
             }
             rowCount++;
         }
     }
 
 
-    async ok() {
+    async ok(event?: Event) {
         console.log('ok');
+        // Stop the event from propagating to parent dialogs
+        if (event) {
+            event.stopPropagation();
+        }
+        // Close only the current dialog if reference exists
+        if (this.currentDialog) {
+            this.currentDialog.close();
+        }
     }
 
-    async close() {
+    async close(event?: Event) {
         console.log('close');
+        // Stop the event from propagating to parent dialogs
+        if (event) {
+            event.stopPropagation();
+        }
+        // Close only the current dialog if reference exists
+        if (this.currentDialog) {
+            this.currentDialog.close();
+        }
+    }
+
+    async openNestedDialog(i: number, j: number) {
+        if (this.nestedDialogs[i] && this.nestedDialogs[i][j]) {
+            this.nestedDialogs[i][j].open();
+        }
     }
 
     async createRow() {
         //Count the number of rows in the table
         let numRows = await this.countRows();
-        this.values.push(this.defaultValues.slice());
 
         //Create a new row
         for (const column of this.has_table_attribute) {
@@ -169,19 +184,36 @@ export class DialogTableAttribute {
 
         let metaAttribute = parentAttributeColumn.attribute;
         // Create a new instance of the attribute that is in the column
-        let newAttributeInstance: AttributeInstance = await this.instanceCreationHandler.createAttributeInstance(
-            parentAttributeColumn.attribute,
-            null,
-            null,
-            //get attribute type default value
-            parentAttributeColumn.attribute.default_value ? parentAttributeColumn.attribute.default_value : "not defined",
-            null,
-            null,
-            null,
-            null,
-            this.currentAttribute.uuid,
-            null
-        );
+        let newAttributeInstance: AttributeInstance
+        if (metaAttribute.attribute_type.has_table_attribute.length > 0) {
+            newAttributeInstance = await this.instanceCreationHandler.createAttributeInstance(
+                parentAttributeColumn.attribute,
+                null,
+                null,
+                //get attribute type default value
+                "",
+                null,
+                null,
+                null,
+                null,
+                this.currentAttribute.uuid,
+                null
+            );
+        } else {
+            newAttributeInstance = await this.instanceCreationHandler.createAttributeInstance(
+                parentAttributeColumn.attribute,
+                null,
+                null,
+                //get attribute type default value
+                parentAttributeColumn.attribute.default_value ? parentAttributeColumn.attribute.default_value : "not defined",
+                null,
+                null,
+                null,
+                null,
+                this.currentAttribute.uuid,
+                null
+            );
+        }
 
         // Set the row of the new attribute instance
         newAttributeInstance.table_row = row;
