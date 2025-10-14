@@ -84,8 +84,20 @@
             </mdc-button>
         </div>
 
-        <!-- if enum -> facets must be a value the make dropdown  -->
-        <div if.bind="(enhancedAttributeInstance.facets.length > 0)">
+        <!-- facets must be a value and uiType should be slider to make slider  -->
+        <div if.bind="(enhancedAttributeInstance.facets.length > 0 && (enhancedAttributeInstance.uiType == 'slider' || enhancedAttributeInstance.uiType == 'Slider'))">
+            <div style="margin-left: 8px;">
+            <label>${enhancedAttributeInstance.attributeInstance.name}</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="white-space: nowrap; margin-left: 4px;">Val: ${enhancedAttributeInstance.attributeInstance.value | numerise}</span>
+            <mdc-slider style="flex: 1;" min.bind="enhancedAttributeInstance.facets[0]" max.bind="enhancedAttributeInstance.facets[1]" value.bind="enhancedAttributeInstance.attributeInstance.value | numerise" step.bind="enhancedAttributeInstance.facets[2] || 1" click.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)"></mdc-slider>
+            </div>
+        </div>
+
+
+        <!--  facets must be a value and uiType should be slider to make dropdown  -->
+        <div if.bind="(enhancedAttributeInstance.facets.length > 0 && (enhancedAttributeInstance.uiType == 'dropdown' || enhancedAttributeInstance.uiType == 'Dropdown'))">
             <mdc-select label.bind="enhancedAttributeInstance.attributeInstance.name"
                 value.bind="enhancedAttributeInstance.attributeInstance.value"
                 change.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)" required
