@@ -5,6 +5,7 @@ import { AttributeInstance, Attribute, AttributeType, UUID, Class, ClassInstance
 import { ColumnStructure } from "../../../../mmar-global-data-structure/models/meta/Metamodel_columns.structure";
 import { bindable, valueConverter } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
+import { MdcDialog } from "@aurelia-mdc-web/dialog";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
 
 export class DialogTableAttribute {
@@ -13,7 +14,7 @@ export class DialogTableAttribute {
     @bindable currentClassInstance: ClassInstance = null;
     @bindable currentPortInstance: PortInstance = null;
     @bindable attribute: Attribute = null;
-    @bindable currentDialog: any = null;
+    @bindable currentDialog: MdcDialog = null;
 
     private currentAttribute: Attribute;
     private currentAttributeType: AttributeType;
