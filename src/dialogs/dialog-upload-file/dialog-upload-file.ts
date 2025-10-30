@@ -94,7 +94,6 @@ export class DialogUploadFile {
 
     validateFile(file) {
         const fileType = file.type;
-        console.log("Validating file type:", fileType);
         if (fileType.startsWith('image/')) {
             this.disableCompress = false;
         } else {
@@ -124,7 +123,6 @@ export class DialogUploadFile {
 
     compressChanged() {
         // Reset errors when toggling compress
-        console.log("Compress changed:", this.compress);
         if (!this.compress) {
             this.targetWidthError = '';
             this.qualityError = '';

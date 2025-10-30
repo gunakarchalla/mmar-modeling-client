@@ -59,6 +59,12 @@ export class AttributeWindow {
     this.eventAggregator.subscribe('removeAttributeGui', await this.delayedReset.bind(this));
     this.eventAggregator.subscribe('gltfUploaded', async payload => { await this.gltfUploaded(payload) });
     this.eventAggregator.subscribe('imageUploaded', async payload => { await this.imageUploaded(payload) });
+    let buttons = document.querySelectorAll("mdc-button");
+    buttons.forEach(button => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+      });
+    });
   }
 
   async deleteFile(attributeInstance: AttributeInstance) {
@@ -310,7 +316,6 @@ export class AttributeWindow {
 
     return Promise.resolve();
   }
-
 
   //this function handles the dialog used for reference fields. Since the dialog is used multiple times, it is called here with the right context
   async openDialog(dialog, attributeInstance) {

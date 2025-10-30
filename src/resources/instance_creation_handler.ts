@@ -89,7 +89,22 @@ export class InstanceCreationHandler {
             let has_table_attribute = attribute_type.has_table_attribute;
 
             for (const column of has_table_attribute) {
-                let newAttributeInstance: AttributeInstance = new AttributeInstance(
+                let newAttributeInstance: AttributeInstance;
+                if (column.attribute.attribute_type.has_table_attribute.length > 0) {
+                    newAttributeInstance = await this.createAttributeInstance(
+                        column.attribute,
+                        null,
+                        null,
+                        "",
+                        null,
+                        null,
+                        null,
+                        null, // No nested table_attributes yet
+                        column.attribute.uuid, // Reference to the parent table attribute
+                        role_from
+                    );
+                } else {
+                    newAttributeInstance = new AttributeInstance(
                     this.create_UUID(),
                     column.attribute.uuid,
                     null,
@@ -103,6 +118,9 @@ export class InstanceCreationHandler {
                     column.attribute.uuid,
                     role_from
                 );
+
+                    newAttributeInstance.name = column.attribute.name;
+                }
                 newAttributeInstance.table_row = 0;
                 attribute_instance.table_attributes.push(newAttributeInstance);
             };

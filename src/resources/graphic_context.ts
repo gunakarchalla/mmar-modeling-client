@@ -279,6 +279,7 @@ export class GraphicContext {
       });
 
       this.metaUtility.findType(anyobject.scene, 'Mesh', objects);
+      this.metaUtility.findType(anyobject.scene, 'SkinnedMesh', objects);
 
       for (const mesh of objects) {
         //move the object by the relative position

@@ -3,8 +3,9 @@ import { InstanceCreationHandler } from "resources/instance_creation_handler";
 import { MetaUtility } from "resources/services/meta_utility";
 import { AttributeInstance, Attribute, AttributeType, UUID, Class, ClassInstance, PortInstance } from "../../../../mmar-global-data-structure";
 import { ColumnStructure } from "../../../../mmar-global-data-structure/models/meta/Metamodel_columns.structure";
-import { bindable } from "aurelia";
+import { bindable, valueConverter } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
+import { MdcDialog } from "@aurelia-mdc-web/dialog";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
 
 export class DialogTableAttribute {
@@ -12,6 +13,8 @@ export class DialogTableAttribute {
     @bindable attributeInstance: AttributeInstance = null;
     @bindable currentClassInstance: ClassInstance = null;
     @bindable currentPortInstance: PortInstance = null;
+    @bindable attribute: Attribute = null;
+    @bindable currentDialog: MdcDialog = null;
 
     private currentAttribute: Attribute;
     private currentAttributeType: AttributeType;
@@ -19,6 +22,9 @@ export class DialogTableAttribute {
     private table = [];
     private columns = [];
     private rows = [];
+
+    // Array to hold references to nested dialogs
+    private nestedDialogs: any[][] = [];
 
     private currentClass: Class;
 
@@ -28,6 +34,7 @@ export class DialogTableAttribute {
     //all cells of the table
     private tableAttributes: AttributeInstance[] = [];
 
+    private facetsAll: string[][] = [];
 
     constructor(
         private globalObjectInstance: GlobalDefinition,
@@ -56,12 +63,18 @@ export class DialogTableAttribute {
         this.has_table_attribute = [];
         this.table = [];
         this.rows = [];
+        this.nestedDialogs = [];
     }
 
     async setMetaInformation() {
         const attributeUUID: UUID = this.attributeInstance.uuid_attribute;
         this.currentClass = await this.metaUtility.getMetaClass(this.globalObjectInstance.current_class_instance.uuid_class);
-        this.currentAttribute = this.currentClass.attributes.find(attribute => attribute.uuid === attributeUUID);
+        if (!this.attribute) {
+            this.currentAttribute = this.currentClass.attributes.find(attribute => attribute.uuid === attributeUUID);
+
+        } else {
+            this.currentAttribute = this.attribute;
+        }
         this.currentAttributeType = this.currentAttribute.attribute_type;
     }
 
@@ -89,25 +102,63 @@ export class DialogTableAttribute {
             }
         }
 
+        for (let i in this.columns) {
+            const column = this.columns[i];
+
+            if (column.ui_component == "dropdown" && column.attribute) {
+                this.facetsAll.push(column.attribute.facets.split("|"));
+
+            } else if (column.ui_component == "slider" && column.attribute) {
+                this.facetsAll.push(column.attribute.facets.split("|"));
+
+            } else {
+                this.facetsAll.push([]);
+            }
+        }
+
         let rowCount = 0;
         for (let i = 0; i < this.tableAttributes.length; i += this.columns.length) {
             this.rows.push([]);
+            this.nestedDialogs.push([]);
 
             //for each column
             for (let j = 0; j < this.columns.length; j++) {
                 this.rows[rowCount].push(this.tableAttributes[i + j]);
+                this.nestedDialogs[rowCount].push(null);
             }
             rowCount++;
         }
     }
 
 
-    async ok() {
+    async ok(event?: Event) {
         console.log('ok');
+        // Stop the event from propagating to parent dialogs
+        if (event) {
+            event.stopPropagation();
+        }
+        // Close only the current dialog if reference exists
+        if (this.currentDialog) {
+            this.currentDialog.close();
+        }
     }
 
-    async close() {
+    async close(event?: Event) {
         console.log('close');
+        // Stop the event from propagating to parent dialogs
+        if (event) {
+            event.stopPropagation();
+        }
+        // Close only the current dialog if reference exists
+        if (this.currentDialog) {
+            this.currentDialog.close();
+        }
+    }
+
+    async openNestedDialog(i: number, j: number) {
+        if (this.nestedDialogs[i] && this.nestedDialogs[i][j]) {
+            this.nestedDialogs[i][j].open();
+        }
     }
 
     async createRow() {
@@ -134,19 +185,36 @@ export class DialogTableAttribute {
 
         let metaAttribute = parentAttributeColumn.attribute;
         // Create a new instance of the attribute that is in the column
-        let newAttributeInstance: AttributeInstance = await this.instanceCreationHandler.createAttributeInstance(
-            parentAttributeColumn.attribute,
-            null,
-            null,
-            //get attribute type default value
-            parentAttributeColumn.attribute.default_value ? parentAttributeColumn.attribute.default_value : "not defined",
-            null,
-            null,
-            null,
-            null,
-            this.currentAttribute.uuid,
-            null
-        );
+        let newAttributeInstance: AttributeInstance
+        if (metaAttribute.attribute_type.has_table_attribute.length > 0) {
+            newAttributeInstance = await this.instanceCreationHandler.createAttributeInstance(
+                parentAttributeColumn.attribute,
+                null,
+                null,
+                //get attribute type default value
+                "",
+                null,
+                null,
+                null,
+                null,
+                this.currentAttribute.uuid,
+                null
+            );
+        } else {
+            newAttributeInstance = await this.instanceCreationHandler.createAttributeInstance(
+                parentAttributeColumn.attribute,
+                null,
+                null,
+                //get attribute type default value
+                parentAttributeColumn.attribute.default_value ? parentAttributeColumn.attribute.default_value : "not defined",
+                null,
+                null,
+                null,
+                null,
+                this.currentAttribute.uuid,
+                null
+            );
+        }
 
         // Set the row of the new attribute instance
         newAttributeInstance.table_row = row;
@@ -185,5 +253,12 @@ export class DialogTableAttribute {
         return Promise.resolve();
     }
 
+    async uiChange(val: any, attributeInstance: AttributeInstance) {
+
+        //update attribute value
+        attributeInstance.value = val.toString();
+
+        await this.fieldChange(attributeInstance);
+    }
 
 }
