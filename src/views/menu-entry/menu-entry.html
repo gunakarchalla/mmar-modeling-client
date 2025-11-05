@@ -1,6 +1,7 @@
 <import from="../../dialogs/dialog-save-as/dialog-save-as"></import>
 <import from="./../../dialogs/dialog-import-model/dialog-import-model"></import>
 <import from="./../../dialogs/dialog-import-metamodel/dialog-import-metamodel"></import>
+<import from="./../../dialogs/dialog-upload-urdf/dialog-upload-urdf"></import>
 
 <div style="display: flex; flex-direction: row; flex: 1;">
   <div mdc-menu-surface-anchor ref="menuElementAnchor">
@@ -35,3 +36,8 @@
 <mdc-dialog view-model.ref="dialogImportMetamodel">
   <dialog-import-metamodel></dialog-import-metamodel>
 </mdc-dialog>
+
+<!-- Dialog for Uploading URDF -->
+<mdc-dialog view-model.ref="dialogUploadUrdf">
+  <dialog-upload-urdf></dialog-upload-urdf>
+  </mdc-dialog>
