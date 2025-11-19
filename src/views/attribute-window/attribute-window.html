@@ -96,7 +96,7 @@
         </div>
 
 
-        <!--  facets must be a value and uiType should be slider to make dropdown  -->
+        <!--  facets must be a value and uiType should be dropdown to make dropdown  -->
         <div if.bind="(enhancedAttributeInstance.facets.length > 0 && (enhancedAttributeInstance.uiType == 'dropdown' || enhancedAttributeInstance.uiType == 'Dropdown'))">
             <mdc-select label.bind="enhancedAttributeInstance.attributeInstance.name"
                 value.bind="enhancedAttributeInstance.attributeInstance.value"
