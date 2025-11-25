@@ -196,7 +196,7 @@ export class TopNavBar {
    async updateUrdfMenuState() {
       try {
          const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
-         const targetSceneTypeUuid = "c1d349d1-094f-4454-8b3c-88f5dc6db133";
+         const targetSceneTypeUuid = "113c3133-bf77-493a-a36f-553e77832280";
          const enabled = !!sceneInstance && sceneInstance.uuid_scene_type === targetSceneTypeUuid;
          this.urdfMenuItem.disabled = !enabled;
       } catch (e) {

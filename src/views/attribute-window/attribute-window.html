@@ -96,7 +96,7 @@
         </div>
 
 
-        <!--  facets must be a value and uiType should be slider to make dropdown  -->
+        <!--  facets must be a value and uiType should be dropdown to make dropdown  -->
         <div if.bind="(enhancedAttributeInstance.facets.length > 0 && (enhancedAttributeInstance.uiType == 'dropdown' || enhancedAttributeInstance.uiType == 'Dropdown'))">
             <mdc-select label.bind="enhancedAttributeInstance.attributeInstance.name"
                 value.bind="enhancedAttributeInstance.attributeInstance.value"
@@ -139,12 +139,12 @@
     <div if.bind="attributeInstanceTable.length !== 0">
         <h5>Table Attributes</h5>
         <div repeat.for="enhancedAttributeInstance of attributeInstanceTable">
-            <mdc-button outlined click.trigger="dialog.open()"
+            <mdc-button outlined click.trigger="enhancedAttributeInstance.dialogRef.open()"
                 style="width: 100%;">${enhancedAttributeInstance.attributeInstance.name}
             </mdc-button>
-            <mdc-dialog view-model.ref="dialog">
+            <mdc-dialog view-model.ref="enhancedAttributeInstance.dialogRef">
                 <dialog-table-attribute
-                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance" current-port-instance.bind="currentPortInstance" current-class-instance.bind="currentClassInstance" current-dialog.bind="dialog"></dialog-table-attribute>
+                    attribute-instance.bind="enhancedAttributeInstance.attributeInstance" current-port-instance.bind="currentPortInstance" current-class-instance.bind="currentClassInstance" current-dialog.bind="enhancedAttributeInstance.dialogRef"></dialog-table-attribute>
             </mdc-dialog>
         </div>
         <hr style="color:silver;">

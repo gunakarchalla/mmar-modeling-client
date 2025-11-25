@@ -154,65 +154,104 @@ export class DialogUploadUrdf {
             }
 
             const linkElements = Array.from(dom.getElementsByTagName('link'));
-            if (linkElements.length === 0) {
-                this.logger?.log('URDF contains no <link> elements', 'info');
-                return;
-            }
+            const jointElements = Array.from(dom.getElementsByTagName('joint'));
 
-            // Resolve the meta class to instantiate for links
+            // Resolve the meta classes to instantiate for links/joints
             const sceneType = await this.metaUtility.getTabContextSceneType();
             if (!sceneType) {
                 this.logger?.log('No scene type in current tab context', 'error');
                 return;
             }
             const linkMeta = sceneType.classes.find(c => (c?.name || '').toLowerCase() === 'link');
+            const jointMeta = sceneType.classes.find(c => (c?.name || '').toLowerCase() === 'joint');
+
             if (!linkMeta) {
                 this.logger?.log("No meta class named 'link' found in scene type", 'error');
-                return;
             }
 
-            // Instantiate each link using inertial/origin xyz scaled by 200; fallback (0,0,0)
-            for (const el of linkElements) {
-                const linkName = el.getAttribute('name') || 'link';
-                const inertial = el.getElementsByTagName('inertial')[0];
-                let originElem: Element | undefined;
-                if (inertial) {
-                    originElem = Array.from(inertial.getElementsByTagName('origin'))[0];
-                }
-                // Some URDFs may put <origin> directly under <link> for visuals/collisions; optionally check there if inertial missing
+            if (!jointMeta) {
+                this.logger?.log("No meta class named 'joint' found in scene type", 'error');
+            }
+
+            const scaleFactor = 100;
+            const parseOrigin = (originElem?: Element) => {
+                let coords = { x: 0, y: 0, z: 0 };
                 if (!originElem) {
-                    originElem = Array.from(el.getElementsByTagName('origin'))[0];
+                    return coords;
                 }
+                const xyzAttr = originElem.getAttribute('xyz');
+                if (!xyzAttr) {
+                    return coords;
+                }
+                const parts = xyzAttr.trim().split(/\s+/).map(v => parseFloat(v));
+                if (parts.length >= 3 && parts.every(n => !isNaN(n))) {
+                    coords = {
+                        x: parts[0] * scaleFactor,
+                        y: parts[1] * scaleFactor,
+                        z: parts[2] * scaleFactor
+                    };
+                }
+                return coords;
+            };
 
-                let x = 0, y = 0, z = 0;
-                if (originElem) {
-                    const xyzAttr = originElem.getAttribute('xyz');
-                    if (xyzAttr) {
-                        const parts = xyzAttr.trim().split(/\s+/).map(v => parseFloat(v));
-                        if (parts.length >= 3 && parts.every(n => !isNaN(n))) {
-                            x = parts[0] * 200;
-                            y = parts[1] * 200;
-                            z = parts[2] * 200;
+            // Instantiate each link using inertial/origin xyz scaled by 100; fallback (0,0,0)
+            if (linkMeta && linkElements.length) {
+                for (const el of linkElements) {
+                    const linkName = el.getAttribute('name') || 'link';
+                    const inertial = el.getElementsByTagName('inertial')[0];
+                    let originElem: Element | undefined;
+                    if (inertial) {
+                        originElem = Array.from(inertial.getElementsByTagName('origin'))[0];
+                    }
+                    // Some URDFs may put <origin> directly under <link> for visuals/collisions; optionally check there if inertial missing
+                    if (!originElem) {
+                        originElem = Array.from(el.getElementsByTagName('origin'))[0];
+                    }
+
+                    const { x, y, z } = parseOrigin(originElem);
+
+                    const classInstance = await this.instanceCreationHandler.createClassInstance(
+                        this.instanceCreationHandler.create_UUID(),
+                        x,
+                        y,
+                        z,
+                        linkMeta.uuid,
+                        'class'
+                    );
+
+                    // Set name attribute if exists
+                    try {
+                        const nameAttrInstance = await this.instanceUtility.getAttributeInstanceFromClassInstance('name', classInstance.uuid, 'name');
+                        if (nameAttrInstance) {
+                            nameAttrInstance.value = linkName;
                         }
-                    }
+                    } catch { /* optional */ }
                 }
+            }
 
-                const classInstance = await this.instanceCreationHandler.createClassInstance(
-                    this.instanceCreationHandler.create_UUID(),
-                    x,
-                    y,
-                    z,
-                    linkMeta.uuid,
-                    'class'
-                );
+            // Instantiate each joint using origin xyz scaled by 100
+            if (jointMeta && jointElements.length) {
+                for (const el of jointElements) {
+                    const jointName = el.getAttribute('name') || 'joint';
+                    const originElem = Array.from(el.getElementsByTagName('origin'))[0];
+                    const { x, y, z } = parseOrigin(originElem);
 
-                // Set name attribute if exists
-                try {
-                    const nameAttrInstance = await this.instanceUtility.getAttributeInstanceFromClassInstance('name', classInstance.uuid, 'name');
-                    if (nameAttrInstance) {
-                        nameAttrInstance.value = linkName;
-                    }
-                } catch { /* optional */ }
+                    const classInstance = await this.instanceCreationHandler.createClassInstance(
+                        this.instanceCreationHandler.create_UUID(),
+                        x,
+                        y,
+                        z,
+                        jointMeta.uuid,
+                        'class'
+                    );
+
+                    try {
+                        const nameAttrInstance = await this.instanceUtility.getAttributeInstanceFromClassInstance('name', classInstance.uuid, 'name');
+                        if (nameAttrInstance) {
+                            nameAttrInstance.value = jointName;
+                        }
+                    } catch { /* optional */ }
+                }
             }
 
             // Draw newly created instances if not yet in scene

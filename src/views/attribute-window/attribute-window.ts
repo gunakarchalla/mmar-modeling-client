@@ -255,6 +255,7 @@ export class AttributeWindow {
         //push table attribute table instances to array
         else {
           this.visible = true;
+          this.attributeInstanceTable['dialogRef'] = null;
           this.attributeInstanceTable.push(attributeInstanceFromArray);
           this.attributeTypesForTableAttributeInstances.push(attributeType);
         }
