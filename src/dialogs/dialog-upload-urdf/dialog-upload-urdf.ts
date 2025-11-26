@@ -169,11 +169,9 @@ export class DialogUploadUrdf {
             }
             const linkMeta = sceneType.classes.find(c => (c?.name || '').toLowerCase() === 'link');
             const jointMeta = sceneType.classes.find(c => (c?.name || '').toLowerCase() === 'joint');
-            const hasRelationMeta = sceneType.relationclasses.find(r => (r?.name || '').toLowerCase() === 'has');
 
             if (!linkMeta) this.logger?.log("No meta class named 'link' found in scene type", 'error');
             if (!jointMeta) this.logger?.log("No meta class named 'joint' found in scene type", 'error');
-            if (!hasRelationMeta) this.logger?.log("No meta relation class named 'has' found in scene type", 'error');
 
             const scaleFactor = 100;
             const linkMap = new Map<string, ClassInstance>();
@@ -286,11 +284,11 @@ export class DialogUploadUrdf {
                         await this.setReferenceAttribute(classInstance, 'Child link', childInstance, 'classInstance');
                     }
 
-                    // Parent Link Relation
+                    // Parent Link Reference
                     const parentLinkName = el.getElementsByTagName('parent')[0]?.getAttribute('link');
-                    if (parentLinkName && linkMap.has(parentLinkName) && hasRelationMeta) {
+                    if (parentLinkName && linkMap.has(parentLinkName)) {
                         const parentInstance = linkMap.get(parentLinkName);
-                        await this.createRelation(hasRelationMeta, parentInstance, classInstance);
+                        await this.setReferenceAttribute(classInstance, 'Parent link', parentInstance, 'classInstance');
                     }
                 }
             }
@@ -459,31 +457,6 @@ export class DialogUploadUrdf {
 
         attrInst.role_instance_from = roleInstance;
         attrInst.value = targetInstance.name;
-    }
-
-    private async createRelation(relationMeta: Relationclass, fromInstance: ClassInstance, toInstance: ClassInstance) {
-        // Create Relation Instance
-        const x = (fromInstance.coordinates_2d.x + toInstance.coordinates_2d.x) / 2;
-        const y = (fromInstance.coordinates_2d.y + toInstance.coordinates_2d.y) / 2;
-        const z = (fromInstance.coordinates_2d.z + toInstance.coordinates_2d.z) / 2;
-
-        const relationInstance = await this.instanceCreationHandler.createRelationclassInstance(
-            this.instanceCreationHandler.create_UUID(),
-            x, y, z,
-            relationMeta.uuid,
-            'relation'
-        );
-
-        // Create Role Instances
-        const roleFrom = await this.instanceCreationHandler.createRoleInstance(
-            this.instanceCreationHandler.create_UUID(),
-            fromInstance, null, 'from', relationInstance.uuid
-        );
-
-        const roleTo = await this.instanceCreationHandler.createRoleInstance(
-            this.instanceCreationHandler.create_UUID(),
-            toInstance, null, 'to', relationInstance.uuid
-        );
     }
 
     private async findUrdfFile(dirHandle: any): Promise<any | null> {

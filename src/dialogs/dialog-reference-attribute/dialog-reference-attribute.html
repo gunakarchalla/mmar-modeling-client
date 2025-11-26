@@ -16,7 +16,7 @@
     </div>
   </div>
 
-  <div if.bind="allowedSceneInstances.length > 0 && !referenceRoleInstance">
+  <div if.bind="!isLoading && allowedSceneInstances.length > 0 && !referenceRoleInstance">
     <div class="gridbody">
       <main>
         <mdc-select label="Select Referenced SceneInstance" value.bind="selectedSceneInstanceObject"
@@ -35,7 +35,7 @@
     </div>
   </div>
 
-  <div if.bind="allowedClassInstances.length > 0 && !referenceRoleInstance">
+  <div if.bind="!isLoading && allowedClassInstances.length > 0 && !referenceRoleInstance">
     <div class="gridbody">
       <main>
         <mdc-select label="Select Referenced ClassInstance" value.bind="selectedClassInstanceObject"
@@ -53,7 +53,7 @@
     </div>
   </div>
 
-  <div if.bind="allowedRelationclassInstances.length > 0 && !referenceRoleInstance">
+  <div if.bind="!isLoading && allowedRelationclassInstances.length > 0 && !referenceRoleInstance">
     <div class="gridbody">
       <main>
         <mdc-select label="Select Referenced RelationclassInstance" value.bind="selectedRelationclassInstanceObject"
@@ -73,7 +73,7 @@
     </div>
   </div>
 
-  <div if.bind="allowedPortInstances.length > 0 && !referenceRoleInstance">
+  <div if.bind="!isLoading && allowedPortInstances.length > 0 && !referenceRoleInstance">
     <div class="gridbody">
       <main>
         <mdc-select label="Select Referenced PortInstance" value.bind="selectedPortInstanceObject"
