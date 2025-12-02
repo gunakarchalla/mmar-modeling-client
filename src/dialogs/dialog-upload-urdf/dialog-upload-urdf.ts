@@ -13,6 +13,7 @@ import { Logger } from 'resources/services/logger';
 import { AttributeInstance, ClassInstance, RoleInstance, RelationclassInstance, Class, Relationclass, Attribute } from '../../../../mmar-global-data-structure';
 import { GlobalDefinition } from 'resources/global_definitions';
 import { GlobalRelationclassObject } from 'resources/global_relationclass_object';
+import { RotationConverter } from 'resources/services/rotation_converter';
 
 export class DialogUploadUrdf {
     private uppy: Uppy | null = null;
@@ -25,7 +26,8 @@ export class DialogUploadUrdf {
         private persistencyHandler: PersistencyHandler,
         private logger: Logger,
         private globalObjectInstance: GlobalDefinition,
-        private globalRelationclassObject: GlobalRelationclassObject
+        private globalRelationclassObject: GlobalRelationclassObject,
+        private rotationConverter: RotationConverter
     ) {
         this.eventAggregator.subscribe('openDialogUploadUrdf', async () => {
             await this.open();
@@ -184,6 +186,7 @@ export class DialogUploadUrdf {
                     // Determine position from inertial origin or visual origin or default
                     let originElem = this.findOrigin(el, 'inertial') || this.findOrigin(el, 'visual') || this.findOrigin(el);
                     const { x, y, z } = this.parseOrigin(originElem, scaleFactor);
+                    const { roll, pitch, yaw } = this.parseRPY(originElem);
 
                     const classInstance = await this.instanceCreationHandler.createClassInstance(
                         this.instanceCreationHandler.create_UUID(),
@@ -191,6 +194,7 @@ export class DialogUploadUrdf {
                         linkMeta.uuid,
                         'class'
                     );
+                    classInstance.rotation = this.rotationConverter.eulerToQuaternion(roll, pitch, yaw);
                     linkMap.set(linkName, classInstance);
 
                     // Set Name
@@ -240,6 +244,7 @@ export class DialogUploadUrdf {
                     const jointType = el.getAttribute('type') || 'fixed';
                     const originElem = el.getElementsByTagName('origin')[0];
                     const { x, y, z } = this.parseOrigin(originElem, scaleFactor);
+                    const { roll, pitch, yaw } = this.parseRPY(originElem);
 
                     const classInstance = await this.instanceCreationHandler.createClassInstance(
                         this.instanceCreationHandler.create_UUID(),
@@ -247,6 +252,7 @@ export class DialogUploadUrdf {
                         jointMeta.uuid,
                         'class'
                     );
+                    classInstance.rotation = this.rotationConverter.eulerToQuaternion(roll, pitch, yaw);
 
                     await this.setSimpleAttribute(classInstance, 'Name', jointName);
                     // Map URDF type to Metamodel Type (Capitalized)
@@ -321,6 +327,18 @@ export class DialogUploadUrdf {
             coords = { x: parts[0] * scaleFactor, y: parts[1] * scaleFactor, z: parts[2] * scaleFactor };
         }
         return coords;
+    }
+
+    private parseRPY(originElem: Element | undefined) {
+        let rpy = { roll: 0, pitch: 0, yaw: 0 };
+        if (!originElem) return rpy;
+        const rpyAttr = originElem.getAttribute('rpy');
+        if (!rpyAttr) return rpy;
+        const parts = rpyAttr.trim().split(/\s+/).map(v => parseFloat(v));
+        if (parts.length >= 3 && parts.every(n => !isNaN(n))) {
+            rpy = { roll: parts[0], pitch: parts[1], yaw: parts[2] };
+        }
+        return rpy;
     }
 
     private parseOriginToMap(originElem: Element | undefined) {
