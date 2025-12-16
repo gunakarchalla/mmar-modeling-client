@@ -17,6 +17,8 @@ import { RotationConverter } from 'resources/services/rotation_converter';
 
 export class DialogUploadUrdf {
     private uppy: Uppy | null = null;
+    // Cache meshes discovered in the extracted URDF to avoid repeated file reads
+    private meshCache = new Map<string, { format: 'gltf' | 'glb' | 'stl', data: string | ArrayBuffer, scale: number[] }>();
 
     constructor(
         private eventAggregator: EventAggregator,
@@ -175,7 +177,8 @@ export class DialogUploadUrdf {
             if (!linkMeta) this.logger?.log("No meta class named 'link' found in scene type", 'error');
             if (!jointMeta) this.logger?.log("No meta class named 'joint' found in scene type", 'error');
 
-            const scaleFactor = 100;
+            // Keep URDF positions without aggressive scaling to avoid scattered links
+            const scaleFactor = 1;
             const linkMap = new Map<string, ClassInstance>();
 
             // Instantiate each link
@@ -214,7 +217,7 @@ export class DialogUploadUrdf {
                         await this.setTableAttribute(classInstance, 'Inertial', [rowData]);
                     }
 
-                    // Set Visuals
+                    // Set Visuals and capture mesh for rendering
                     const visualEls = Array.from(el.getElementsByTagName('visual'));
                     const visualRows = visualEls.map(v => {
                         const name = v.getAttribute('name') || '';
@@ -224,6 +227,13 @@ export class DialogUploadUrdf {
                         return { 'Name': name, 'Origin': origin, 'Geometry': geometry, 'Material': material };
                     });
                     if (visualRows.length > 0) await this.setTableAttribute(classInstance, 'Visual', visualRows);
+
+                    // Attach URDF mesh to class instance (STL/GLTF)
+                    // Try to pick up a referenced mesh (STL/GLTF) from the extracted archive for rendering
+                    const meshInfo = await this.extractMeshFromVisuals(visualEls, rootDir);
+                    if (meshInfo) {
+                        (classInstance as any).urdfVizRep = meshInfo;
+                    }
 
                     // Set Collisions
                     const collisionEls = Array.from(el.getElementsByTagName('collision'));
@@ -393,6 +403,95 @@ export class DialogUploadUrdf {
         }
 
         return { 'Name': name, 'Color': color, 'Texture': textureEl?.getAttribute('filename') || '' };
+    }
+
+    private parseScaleAttr(scaleAttr?: string | null): number[] {
+        if (!scaleAttr) return [1, 1, 1];
+        const parts = scaleAttr.trim().split(/\s+/).map(v => parseFloat(v));
+        if (parts.length === 3 && parts.every(v => !isNaN(v))) {
+            return parts;
+        }
+        return [1, 1, 1];
+    }
+
+    private normalizeMeshPath(filename: string) {
+        return filename.replace(/^package:\/\//i, '').replace(/^\//, '');
+    }
+
+    private async getMeshHandleByPath(rootDir: any, normalizedPath: string): Promise<any | null> {
+        try {
+            const segments = normalizedPath.split('/').filter(Boolean);
+            let current = rootDir;
+            for (let i = 0; i < segments.length - 1; i++) {
+                current = await current.getDirectoryHandle(segments[i]);
+            }
+            return await current.getFileHandle(segments[segments.length - 1]);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    private async findMeshFileHandle(rootDir: any, filename: string): Promise<any | null> {
+        const targetName = filename.toLowerCase();
+        const queue: Array<any> = [rootDir];
+        while (queue.length) {
+            const dir = queue.shift();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            for await (const [name, handle] of (dir as any).entries()) {
+                if (handle.kind === 'file' && name.toLowerCase() === targetName) {
+                    return handle;
+                }
+                if (handle.kind === 'directory') {
+                    queue.push(handle);
+                }
+            }
+        }
+        return null;
+    }
+
+    // Load a mesh file from OPFS and normalize output shape for GLTF/GLB/STL
+    private async loadMeshData(rootDir: any, filename: string, scaleAttr?: string | null) {
+        const normalized = this.normalizeMeshPath(filename);
+        const cacheKey = `${normalized}|${scaleAttr || ''}`;
+        if (this.meshCache.has(cacheKey)) {
+            return this.meshCache.get(cacheKey);
+        }
+
+        const directHandle = await this.getMeshHandleByPath(rootDir, normalized);
+        const handle = directHandle || await this.findMeshFileHandle(rootDir, normalized.split('/').pop() || normalized);
+        if (!handle) return null;
+
+        const file = await handle.getFile();
+        const ext = (file.name || filename).toLowerCase().split('.').pop();
+        const format = ext === 'stl' ? 'stl' : ext === 'glb' ? 'glb' : 'gltf';
+
+        let data: string | ArrayBuffer;
+        if (format === 'gltf') {
+            data = await file.text();
+        } else {
+            data = await file.arrayBuffer();
+        }
+
+        const scale = this.parseScaleAttr(scaleAttr);
+        const meshInfo = { format, data, scale } as const;
+        this.meshCache.set(cacheKey, meshInfo);
+        return meshInfo;
+    }
+
+    // Walk visual tags to find the first usable mesh reference
+    private async extractMeshFromVisuals(visualEls: Element[], rootDir: any) {
+        for (const visual of visualEls) {
+            const meshEl = visual.getElementsByTagName('mesh')[0];
+            if (!meshEl) continue;
+            const filename = meshEl.getAttribute('filename');
+            if (!filename) continue;
+            const scaleAttr = meshEl.getAttribute('scale');
+            const meshData = await this.loadMeshData(rootDir, filename, scaleAttr);
+            if (meshData) {
+                return meshData;
+            }
+        }
+        return null;
     }
 
     private async setSimpleAttribute(classInstance: ClassInstance, attrName: string, value: string) {
