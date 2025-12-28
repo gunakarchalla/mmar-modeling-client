@@ -15,6 +15,7 @@ import { GlobalDefinition } from 'resources/global_definitions';
 import { GlobalRelationclassObject } from 'resources/global_relationclass_object';
 import { RotationConverter } from 'resources/services/rotation_converter';
 import * as THREE from 'three';
+import URDFLoader, { URDFRobot, URDFLink, URDFJoint } from 'urdf-loader';
 
 export class DialogUploadUrdf {
     private uppy: Uppy | null = null;
@@ -144,7 +145,8 @@ export class DialogUploadUrdf {
         }
     }
 
-    // Recursively search for a folder named "urdf" and return the first *.urdf file handle found.
+    // Parse the extracted URDF using urdf-loader and instantiate Link/Joint classes.
+    // Rendering stays delegated to PersistencyHandler + GraphicContext via urdfVizRep.
     private async processExtractedUrdf(rootDir: any) {
         try {
             const urdfFileHandle = await this.findUrdfFile(rootDir);
@@ -156,15 +158,50 @@ export class DialogUploadUrdf {
             const urdfFile = await urdfFileHandle.getFile();
             const xmlText = await urdfFile.text();
 
-            const dom = new DOMParser().parseFromString(xmlText, 'application/xml');
-            const parserError = dom.getElementsByTagName('parsererror')[0];
-            if (parserError) {
-                this.logger?.log('Failed to parse URDF XML', 'error');
+            // urdf-loader handles the XML parsing and builds a THREE.Object3D hierarchy for links/joints.
+            // We disable automatic mesh loading because we want to:
+            // 1) keep mesh IO in OPFS (zip extraction) and
+            // 2) reuse the existing GLTF/STL rendering path via GraphicContext in PersistencyHandler.
+            const urdfLoader = new URDFLoader();
+            urdfLoader.parseVisual = false;
+            urdfLoader.parseCollision = false;
+
+            let robot: URDFRobot;
+            try {
+                robot = urdfLoader.parse(xmlText);
+            } catch (parseErr) {
+                this.logger?.log(`Failed to parse URDF via urdf-loader: ${parseErr?.message || parseErr}`, 'error');
                 return;
             }
 
-            const linkElements = Array.from(dom.getElementsByTagName('link'));
-            const jointElements = Array.from(dom.getElementsByTagName('joint'));
+            // Ensure world matrices are up to date so we can read absolute poses.
+            // NOTE:
+            // This project currently does not ship THREE.js type definitions, so the urdf-loader
+            // classes don't appear to TypeScript as full THREE.Object3D instances.
+            // At runtime they *are* Object3Ds, so we intentionally cast to `any` for pose reads.
+            (robot as any).updateMatrixWorld?.(true);
+
+            const getWorldPose = (obj: any) => {
+                const pos = new THREE.Vector3();
+                const rot = new THREE.Quaternion();
+
+                if (obj && typeof obj.getWorldPosition === 'function') {
+                    obj.getWorldPosition(pos);
+                } else if (obj?.matrixWorld) {
+                    pos.setFromMatrixPosition(obj.matrixWorld);
+                }
+
+                if (obj && typeof obj.getWorldQuaternion === 'function') {
+                    obj.getWorldQuaternion(rot);
+                } else if (obj?.matrixWorld) {
+                    rot.setFromRotationMatrix(obj.matrixWorld);
+                }
+
+                return { pos, rot };
+            };
+
+            const links: URDFLink[] = Object.values(robot.links || {});
+            const joints: URDFJoint[] = Object.values(robot.joints || {});
 
             // Resolve the meta classes to instantiate for links/joints
             const sceneType = await this.metaUtility.getTabContextSceneType();
@@ -178,91 +215,20 @@ export class DialogUploadUrdf {
             if (!linkMeta) this.logger?.log("No meta class named 'link' found in scene type", 'error');
             if (!jointMeta) this.logger?.log("No meta class named 'joint' found in scene type", 'error');
 
-            // Keep URDF positions without aggressive scaling to avoid scattered links
+            // Keep URDF positions without aggressive scaling to avoid scattered links.
+            // If you later want unit conversion (e.g., meters -> mm), this is the single switch.
             const scaleFactor = 1;
-
-            // Precompute world transforms from the joint hierarchy (URDF origins are relative, not absolute)
-            const linkPoses = new Map<string, { position: THREE.Vector3, rotation: THREE.Quaternion }>();
-            const jointPoses = new Map<string, { position: THREE.Vector3, rotation: THREE.Quaternion }>();
-
-            const jointInfos = jointElements.map(el => {
-                const name = el.getAttribute('name') || '';
-                const parent = el.getElementsByTagName('parent')[0]?.getAttribute('link') || '';
-                const child = el.getElementsByTagName('child')[0]?.getAttribute('link') || '';
-                const originElem = el.getElementsByTagName('origin')[0];
-                const xyz = this.parseOrigin(originElem, scaleFactor);
-                const rpy = this.parseRPY(originElem);
-                return { name, parent, child, xyz, rpy };
-            });
-
-            const childLinks = new Set(jointInfos.map(j => j.child).filter(n => n));
-            const allLinks = new Set(linkElements.map(l => l.getAttribute('name') || 'link'));
-            const rootLinks = Array.from(allLinks).filter(n => !childLinks.has(n));
-
-            const toEulerQuat = (rpy: { roll: number, pitch: number, yaw: number }) => {
-                const q = new THREE.Quaternion();
-                q.setFromEuler(new THREE.Euler(rpy.roll, rpy.pitch, rpy.yaw, 'XYZ'));
-                return q;
-            };
-
-            const compose = (xyz: { x: number, y: number, z: number }, rpy: { roll: number, pitch: number, yaw: number }) => {
-                const m = new THREE.Matrix4();
-                const t = new THREE.Vector3(xyz.x, xyz.y, xyz.z);
-                const q = toEulerQuat(rpy);
-                m.makeRotationFromQuaternion(q);
-                m.setPosition(t);
-                return m;
-            };
-
-            const extractPose = (m: THREE.Matrix4) => {
-                const pos = new THREE.Vector3();
-                const quat = new THREE.Quaternion();
-                const scale = new THREE.Vector3();
-                m.decompose(pos, quat, scale);
-                return { position: pos, rotation: quat };
-            };
-
-            const visited = new Set<string>();
-            const queue: Array<{ link: string, world: THREE.Matrix4 }> = [];
-
-            // seed roots at identity
-            const rootIterable = rootLinks.length ? rootLinks : Array.from(allLinks);
-            for (const root of rootIterable) {
-                const identity = new THREE.Matrix4();
-                linkPoses.set(root, extractPose(identity));
-                queue.push({ link: root, world: identity });
-                visited.add(root);
-            }
-
-            while (queue.length) {
-                const current = queue.shift();
-                if (!current) break;
-
-                const childrenJoints = jointInfos.filter(j => j.parent === current.link);
-                for (const j of childrenJoints) {
-                    const jointLocal = compose(j.xyz, j.rpy);
-                    const jointWorld = current.world.clone().multiply(jointLocal);
-                    jointPoses.set(j.name, extractPose(jointWorld));
-
-                    const childLink = j.child;
-                    if (childLink && !visited.has(childLink)) {
-                        linkPoses.set(childLink, extractPose(jointWorld));
-                        queue.push({ link: childLink, world: jointWorld });
-                        visited.add(childLink);
-                    }
-                }
-            }
             const linkMap = new Map<string, ClassInstance>();
 
             // Instantiate each link
-            if (linkMeta && linkElements.length) {
-                for (const el of linkElements) {
-                    const linkName = el.getAttribute('name') || 'link';
+            if (linkMeta && links.length) {
+                for (const link of links) {
+                    // Use `urdfName` from urdf-loader; avoid relying on THREE.Object3D.name typings.
+                    const linkName = (link.urdfName || 'link');
 
-                    // Use world pose derived from joint tree; fall back to local origin if missing
-                    const pose = linkPoses.get(linkName);
-                    const pos = pose?.position || new THREE.Vector3(0, 0, 0);
-                    const rot = pose?.rotation || new THREE.Quaternion();
+                    // Use urdf-loader's computed scene graph transforms.
+                    const { pos, rot } = getWorldPose(link as any);
+                    pos.multiplyScalar(scaleFactor);
 
                     const classInstance = await this.instanceCreationHandler.createClassInstance(
                         this.instanceCreationHandler.create_UUID(),
@@ -276,8 +242,11 @@ export class DialogUploadUrdf {
                     // Set Name
                     await this.setSimpleAttribute(classInstance, 'Name', linkName);
 
+                    // Attribute mapping reads from the underlying URDF DOM node stored by urdf-loader.
+                    const linkNode = link.urdfNode;
+
                     // Set Inertial
-                    const inertialEl = el.getElementsByTagName('inertial')[0];
+                    const inertialEl = linkNode?.getElementsByTagName('inertial')[0];
                     if (inertialEl) {
                         const mass = inertialEl.getElementsByTagName('mass')[0]?.getAttribute('value') || '0';
                         const inertiaEl = inertialEl.getElementsByTagName('inertia')[0];
@@ -291,7 +260,7 @@ export class DialogUploadUrdf {
                     }
 
                     // Set Visuals and capture mesh for rendering
-                    const visualEls = Array.from(el.getElementsByTagName('visual'));
+                    const visualEls = Array.from(linkNode?.getElementsByTagName('visual') || []);
                     const visualRows = visualEls.map(v => {
                         const name = v.getAttribute('name') || '';
                         const origin = this.parseOriginToMap(v.getElementsByTagName('origin')[0]);
@@ -309,7 +278,7 @@ export class DialogUploadUrdf {
                     }
 
                     // Set Collisions
-                    const collisionEls = Array.from(el.getElementsByTagName('collision'));
+                    const collisionEls = Array.from(linkNode?.getElementsByTagName('collision') || []);
                     const collisionRows = collisionEls.map(c => {
                         const name = c.getAttribute('name') || '';
                         const origin = this.parseOriginToMap(c.getElementsByTagName('origin')[0]);
@@ -321,14 +290,16 @@ export class DialogUploadUrdf {
             }
 
             // Instantiate each joint
-            if (jointMeta && jointElements.length) {
-                for (const el of jointElements) {
-                    const jointName = el.getAttribute('name') || 'joint';
-                    const jointType = el.getAttribute('type') || 'fixed';
-                    const originElem = el.getElementsByTagName('origin')[0];
-                    const pose = jointPoses.get(jointName);
-                    const pos = pose?.position || new THREE.Vector3(0, 0, 0);
-                    const rot = pose?.rotation || new THREE.Quaternion();
+            if (jointMeta && joints.length) {
+                for (const joint of joints) {
+                    // Use `urdfName` from urdf-loader; avoid relying on THREE.Object3D.name typings.
+                    const jointName = (joint.urdfName || 'joint');
+                    const jointType = joint.jointType || 'fixed';
+                    const jointNode = joint.urdfNode;
+                    const originElem = jointNode?.getElementsByTagName('origin')[0];
+
+                    const { pos, rot } = getWorldPose(joint as any);
+                    pos.multiplyScalar(scaleFactor);
 
                     const classInstance = await this.instanceCreationHandler.createClassInstance(
                         this.instanceCreationHandler.create_UUID(),
@@ -349,33 +320,39 @@ export class DialogUploadUrdf {
                     }
 
                     // Axis
-                    const axisElem = el.getElementsByTagName('axis')[0];
-                    if (axisElem) {
-                        const xyz = (axisElem.getAttribute('xyz') || '0 0 1').split(/\s+/);
-                        await this.setTableAttribute(classInstance, 'Axis', [{ 'Position x': xyz[0], 'Position y': xyz[1], 'Position z': xyz[2] }]);
+                    // Prefer parsed axis from urdf-loader (already numeric), fallback to XML if missing.
+                    if (joint.axis) {
+                        await this.setTableAttribute(classInstance, 'Axis', [{ 'Position x': String(joint.axis.x), 'Position y': String(joint.axis.y), 'Position z': String(joint.axis.z) }]);
+                    } else {
+                        const axisElem = jointNode?.getElementsByTagName('axis')[0];
+                        if (axisElem) {
+                            const xyz = (axisElem.getAttribute('xyz') || '0 0 1').split(/\s+/);
+                            await this.setTableAttribute(classInstance, 'Axis', [{ 'Position x': xyz[0], 'Position y': xyz[1], 'Position z': xyz[2] }]);
+                        }
                     }
 
                     // Limit
-                    const limitElem = el.getElementsByTagName('limit')[0];
-                    if (limitElem) {
+                    // urdf-loader exposes lower/upper; we keep effort/velocity from the raw node for completeness.
+                    const limitElem = jointNode?.getElementsByTagName('limit')[0];
+                    if (limitElem || joint.limit) {
                         const limitData = {
-                            'Lower': limitElem.getAttribute('lower') || '0',
-                            'Upper': limitElem.getAttribute('upper') || '0',
-                            'Effort': limitElem.getAttribute('effort') || '0',
-                            'Velocity': limitElem.getAttribute('velocity') || '0'
+                            'Lower': limitElem?.getAttribute('lower') || (joint.limit?.lower != null ? String(joint.limit.lower) : '0'),
+                            'Upper': limitElem?.getAttribute('upper') || (joint.limit?.upper != null ? String(joint.limit.upper) : '0'),
+                            'Effort': limitElem?.getAttribute('effort') || '0',
+                            'Velocity': limitElem?.getAttribute('velocity') || '0'
                         };
                         await this.setTableAttribute(classInstance, 'Limit', [limitData]);
                     }
 
                     // Child Link Reference
-                    const childLinkName = el.getElementsByTagName('child')[0]?.getAttribute('link');
+                    const childLinkName = jointNode?.getElementsByTagName('child')[0]?.getAttribute('link');
                     if (childLinkName && linkMap.has(childLinkName)) {
                         const childInstance = linkMap.get(childLinkName);
                         await this.setReferenceAttribute(classInstance, 'Child link', childInstance, 'classInstance');
                     }
 
                     // Parent Link Reference
-                    const parentLinkName = el.getElementsByTagName('parent')[0]?.getAttribute('link');
+                    const parentLinkName = jointNode?.getElementsByTagName('parent')[0]?.getAttribute('link');
                     if (parentLinkName && linkMap.has(parentLinkName)) {
                         const parentInstance = linkMap.get(parentLinkName);
                         await this.setReferenceAttribute(classInstance, 'Parent link', parentInstance, 'classInstance');
