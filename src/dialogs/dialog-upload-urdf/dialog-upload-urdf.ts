@@ -14,6 +14,7 @@ import { AttributeInstance, ClassInstance, RoleInstance, RelationclassInstance, 
 import { GlobalDefinition } from 'resources/global_definitions';
 import { GlobalRelationclassObject } from 'resources/global_relationclass_object';
 import { RotationConverter } from 'resources/services/rotation_converter';
+import * as THREE from 'three';
 
 export class DialogUploadUrdf {
     private uppy: Uppy | null = null;
@@ -179,6 +180,78 @@ export class DialogUploadUrdf {
 
             // Keep URDF positions without aggressive scaling to avoid scattered links
             const scaleFactor = 1;
+
+            // Precompute world transforms from the joint hierarchy (URDF origins are relative, not absolute)
+            const linkPoses = new Map<string, { position: THREE.Vector3, rotation: THREE.Quaternion }>();
+            const jointPoses = new Map<string, { position: THREE.Vector3, rotation: THREE.Quaternion }>();
+
+            const jointInfos = jointElements.map(el => {
+                const name = el.getAttribute('name') || '';
+                const parent = el.getElementsByTagName('parent')[0]?.getAttribute('link') || '';
+                const child = el.getElementsByTagName('child')[0]?.getAttribute('link') || '';
+                const originElem = el.getElementsByTagName('origin')[0];
+                const xyz = this.parseOrigin(originElem, scaleFactor);
+                const rpy = this.parseRPY(originElem);
+                return { name, parent, child, xyz, rpy };
+            });
+
+            const childLinks = new Set(jointInfos.map(j => j.child).filter(n => n));
+            const allLinks = new Set(linkElements.map(l => l.getAttribute('name') || 'link'));
+            const rootLinks = Array.from(allLinks).filter(n => !childLinks.has(n));
+
+            const toEulerQuat = (rpy: { roll: number, pitch: number, yaw: number }) => {
+                const q = new THREE.Quaternion();
+                q.setFromEuler(new THREE.Euler(rpy.roll, rpy.pitch, rpy.yaw, 'XYZ'));
+                return q;
+            };
+
+            const compose = (xyz: { x: number, y: number, z: number }, rpy: { roll: number, pitch: number, yaw: number }) => {
+                const m = new THREE.Matrix4();
+                const t = new THREE.Vector3(xyz.x, xyz.y, xyz.z);
+                const q = toEulerQuat(rpy);
+                m.makeRotationFromQuaternion(q);
+                m.setPosition(t);
+                return m;
+            };
+
+            const extractPose = (m: THREE.Matrix4) => {
+                const pos = new THREE.Vector3();
+                const quat = new THREE.Quaternion();
+                const scale = new THREE.Vector3();
+                m.decompose(pos, quat, scale);
+                return { position: pos, rotation: quat };
+            };
+
+            const visited = new Set<string>();
+            const queue: Array<{ link: string, world: THREE.Matrix4 }> = [];
+
+            // seed roots at identity
+            const rootIterable = rootLinks.length ? rootLinks : Array.from(allLinks);
+            for (const root of rootIterable) {
+                const identity = new THREE.Matrix4();
+                linkPoses.set(root, extractPose(identity));
+                queue.push({ link: root, world: identity });
+                visited.add(root);
+            }
+
+            while (queue.length) {
+                const current = queue.shift();
+                if (!current) break;
+
+                const childrenJoints = jointInfos.filter(j => j.parent === current.link);
+                for (const j of childrenJoints) {
+                    const jointLocal = compose(j.xyz, j.rpy);
+                    const jointWorld = current.world.clone().multiply(jointLocal);
+                    jointPoses.set(j.name, extractPose(jointWorld));
+
+                    const childLink = j.child;
+                    if (childLink && !visited.has(childLink)) {
+                        linkPoses.set(childLink, extractPose(jointWorld));
+                        queue.push({ link: childLink, world: jointWorld });
+                        visited.add(childLink);
+                    }
+                }
+            }
             const linkMap = new Map<string, ClassInstance>();
 
             // Instantiate each link
@@ -186,18 +259,18 @@ export class DialogUploadUrdf {
                 for (const el of linkElements) {
                     const linkName = el.getAttribute('name') || 'link';
 
-                    // Determine position from inertial origin or visual origin or default
-                    let originElem = this.findOrigin(el, 'inertial') || this.findOrigin(el, 'visual') || this.findOrigin(el);
-                    const { x, y, z } = this.parseOrigin(originElem, scaleFactor);
-                    const { roll, pitch, yaw } = this.parseRPY(originElem);
+                    // Use world pose derived from joint tree; fall back to local origin if missing
+                    const pose = linkPoses.get(linkName);
+                    const pos = pose?.position || new THREE.Vector3(0, 0, 0);
+                    const rot = pose?.rotation || new THREE.Quaternion();
 
                     const classInstance = await this.instanceCreationHandler.createClassInstance(
                         this.instanceCreationHandler.create_UUID(),
-                        x, y, z,
+                        pos.x, pos.y, pos.z,
                         linkMeta.uuid,
                         'class'
                     );
-                    classInstance.rotation = this.rotationConverter.eulerToQuaternion(roll, pitch, yaw);
+                    classInstance.rotation = rot;
                     linkMap.set(linkName, classInstance);
 
                     // Set Name
@@ -253,16 +326,17 @@ export class DialogUploadUrdf {
                     const jointName = el.getAttribute('name') || 'joint';
                     const jointType = el.getAttribute('type') || 'fixed';
                     const originElem = el.getElementsByTagName('origin')[0];
-                    const { x, y, z } = this.parseOrigin(originElem, scaleFactor);
-                    const { roll, pitch, yaw } = this.parseRPY(originElem);
+                    const pose = jointPoses.get(jointName);
+                    const pos = pose?.position || new THREE.Vector3(0, 0, 0);
+                    const rot = pose?.rotation || new THREE.Quaternion();
 
                     const classInstance = await this.instanceCreationHandler.createClassInstance(
                         this.instanceCreationHandler.create_UUID(),
-                        x, y, z,
+                        pos.x, pos.y, pos.z,
                         jointMeta.uuid,
                         'class'
                     );
-                    classInstance.rotation = this.rotationConverter.eulerToQuaternion(roll, pitch, yaw);
+                    classInstance.rotation = rot;
 
                     await this.setSimpleAttribute(classInstance, 'Name', jointName);
                     // Map URDF type to Metamodel Type (Capitalized)
