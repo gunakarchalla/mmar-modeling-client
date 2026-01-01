@@ -14,6 +14,7 @@ import { AttributeInstance, ClassInstance, RoleInstance, RelationclassInstance, 
 import { GlobalDefinition } from 'resources/global_definitions';
 import { GlobalRelationclassObject } from 'resources/global_relationclass_object';
 import { RotationConverter } from 'resources/services/rotation_converter';
+import { UrdfPoseService } from 'resources/services/urdf_pose_service';
 import * as THREE from 'three';
 import URDFLoader, { URDFRobot, URDFLink, URDFJoint } from 'urdf-loader';
 
@@ -31,7 +32,8 @@ export class DialogUploadUrdf {
         private logger: Logger,
         private globalObjectInstance: GlobalDefinition,
         private globalRelationclassObject: GlobalRelationclassObject,
-        private rotationConverter: RotationConverter
+        private rotationConverter: RotationConverter,
+        private urdfPoseService: UrdfPoseService
     ) {
         this.eventAggregator.subscribe('openDialogUploadUrdf', async () => {
             await this.open();
@@ -203,6 +205,10 @@ export class DialogUploadUrdf {
             const links: URDFLink[] = Object.values(robot.links || {});
             const joints: URDFJoint[] = Object.values(robot.joints || {});
 
+            // Key used to correlate later attribute edits with this robot instance.
+            // We store it on each created class instance and also register it in UrdfPoseService.
+            const robotKey = ((robot as any).urdfName as string) || ((robot as any).name as string) || 'robot';
+
             // Resolve the meta classes to instantiate for links/joints
             const sceneType = await this.metaUtility.getTabContextSceneType();
             if (!sceneType) {
@@ -219,6 +225,10 @@ export class DialogUploadUrdf {
             // If you later want unit conversion (e.g., meters -> mm), this is the single switch.
             const scaleFactor = 1;
             const linkMap = new Map<string, ClassInstance>();
+
+            // Track created instances so we can register name -> instance mappings for pose updates.
+            const createdLinkInstances: ClassInstance[] = [];
+            const createdJointInstances: ClassInstance[] = [];
 
             // Instantiate each link
             if (linkMeta && links.length) {
@@ -237,12 +247,22 @@ export class DialogUploadUrdf {
                         'class'
                     );
                     classInstance.rotation = rot;
+
+                    // Store URDF linkage metadata for later pose recomputation on attribute edits.
+                    (classInstance as any).urdfRobotKey = robotKey;
+                    (classInstance as any).urdfRef = { kind: 'link', name: linkName };
+
                     linkMap.set(linkName, classInstance);
+                    createdLinkInstances.push(classInstance);
 
                     // Set Name
                     await this.setSimpleAttribute(classInstance, 'Name', linkName);
 
                     // Attribute mapping reads from the underlying URDF DOM node stored by urdf-loader.
+
+                    // Notify interested views (e.g., SimulationWindow) that new URDF-derived instances exist.
+                    // We use a dedicated event to avoid overloading unrelated events like `tabChanged`.
+                    this.eventAggregator.publish('urdfUploaded', { robotKey });
                     const linkNode = link.urdfNode;
 
                     // Set Inertial
@@ -309,6 +329,12 @@ export class DialogUploadUrdf {
                     );
                     classInstance.rotation = rot;
 
+                    // Store URDF linkage metadata for later pose recomputation on attribute edits.
+                    (classInstance as any).urdfRobotKey = robotKey;
+                    (classInstance as any).urdfRef = { kind: 'joint', name: jointName };
+
+                    createdJointInstances.push(classInstance);
+
                     await this.setSimpleAttribute(classInstance, 'Name', jointName);
                     // Map URDF type to Metamodel Type (Capitalized)
                     const typeMap: any = { 'revolute': 'Revolute', 'continuous': 'Continuous', 'prismatic': 'Prismatic', 'fixed': 'Fixed', 'floating': 'Floating', 'planar': 'Planar' };
@@ -359,6 +385,15 @@ export class DialogUploadUrdf {
                     }
                 }
             }
+
+            // Register the parsed robot + instance mapping so table-attribute edits can recompute poses.
+            // This is intentionally done after all instances are created.
+            this.urdfPoseService.registerRobot(robotKey, robot, scaleFactor, createdLinkInstances, createdJointInstances);
+
+            // Notify interested views (e.g., SimulationWindow) that new URDF-derived instances exist.
+            // This is required because the simulation panel stays attached while hidden and would
+            // otherwise keep showing a stale joint list.
+            this.eventAggregator.publish('urdfUploaded', { robotKey });
 
             // Draw newly created instances if not yet in scene
             await this.persistencyHandler.checkIfClassinstanceInScene();

@@ -1,3 +1,5 @@
 <import from="../attribute-window/attribute-window"></import>
+<import from="../simulation-window/simulation-window"></import>
 
-<attribute-window first-level.bind="true"> </attribute-window>
+<simulation-window show.bind="globalStateObject.activeState === 'SimulationMode'"></simulation-window>
+<attribute-window show.bind="globalStateObject.activeState !== 'SimulationMode'" first-level.bind="true"> </attribute-window>

@@ -7,6 +7,7 @@ import { bindable, valueConverter } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
 import { MdcDialog } from "@aurelia-mdc-web/dialog";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
+import { UrdfPoseService } from "resources/services/urdf_pose_service";
 
 export class DialogTableAttribute {
 
@@ -42,6 +43,7 @@ export class DialogTableAttribute {
         private instanceCreationHandler: InstanceCreationHandler,
         private vizrepUpdateChecker: VizrepUpdateChecker,
         private hybridAlgorithmsService: HybridAlgorithmsService,
+        private urdfPoseService: UrdfPoseService,
     ) {
 
     }
@@ -227,6 +229,26 @@ export class DialogTableAttribute {
 
         //update attribute value
         attributeInstance.value = attributeInstance.value.toString();
+
+        // URDF kinematics update hook:
+        // If the user edits a Joint's Origin table (Roll/Pitch/Yaw/Position) we recompute the
+        // robot poses via `urdf-loader` and update all link/joint transforms in the scene.
+        //
+        // We intentionally keep this check very narrow (Joint + Origin only) to avoid any
+        // unintended behavior for non-URDF content.
+        try {
+            const currentClassName = (this.currentClass?.name || '').toLowerCase();
+            const currentAttributeName = (this.currentAttribute?.name || '').toLowerCase();
+            const hasUrdfRef = !!(this.currentClassInstance && (this.currentClassInstance as any).urdfRef);
+
+            if (this.currentClassInstance && hasUrdfRef && currentClassName === 'joint' && currentAttributeName === 'origin') {
+                // `this.attributeInstance` is the parent (table) attribute instance (Origin).
+                // `attributeInstance` is the edited cell.
+                await this.urdfPoseService.tryUpdateRobotFromJointOriginEdit(this.currentClassInstance, this.attributeInstance);
+            }
+        } catch (err) {
+            // Non-fatal: fall back to existing vizRep update path.
+        }
 
         await this.vizrepUpdateChecker.checkForVizRepUpdate(attributeInstance);
 
