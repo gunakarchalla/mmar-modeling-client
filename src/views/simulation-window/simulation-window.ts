@@ -11,8 +11,8 @@ type JointControl = {
     lower: number;
     upper: number;
     value: number;
-    step: number;
-    disabled: boolean;
+    step?: number;
+    disabled?: boolean;
 };
 
 export class SimulationWindow {
@@ -149,10 +149,12 @@ export class SimulationWindow {
                 controls.push({
                     instance: jointInstance,
                     displayName,
-                    lower: Math.round(lower * 100) / 100,
-                    upper: Math.round(upper * 100) / 100,
-                    value: 0.00,
-                    step: 0.01,
+                    lower: Math.round(lower),
+                    // lower: Math.round(lower * 100) / 100,
+                    // upper: Math.round(upper * 100) / 100,
+                    upper: Math.round(upper),
+                    value: 1,
+                    step: 1,
                     disabled: false,
                 });
             }
