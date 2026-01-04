@@ -8,7 +8,7 @@ import { MetaUtility } from "./services/meta_utility";
 import { InstanceUtility } from "./services/instance_utility";
 import { GlobalClassObject } from "./global_class_object";
 import { GlobalRelationclassObject } from './global_relationclass_object';
-import { singleton } from "aurelia";
+import { EventAggregator, singleton } from "aurelia";
 import { Logger } from "./services/logger";
 
 @singleton()
@@ -24,7 +24,8 @@ export class InstanceCreationHandler {
         private metaUtility: MetaUtility,
         private instanceUtility: InstanceUtility,
         private gc: GraphicContext,
-        private logger: Logger
+        private logger: Logger,
+        private eventAggregator: EventAggregator
 
     ) { }
 
@@ -258,6 +259,14 @@ export class InstanceCreationHandler {
 
         this.logger.log(`Class Instance ${class_instance.uuid} added to scene_instance ${sceneInstance.uuid}`, 'done');
 
+        // Notify listeners (e.g., SimulationWindow) that the active SceneInstance has changed.
+        this.eventAggregator.publish('sceneInstanceMutated', {
+            sceneInstanceUuid: sceneInstance.uuid,
+            action: 'added',
+            kind: type || 'class',
+            instanceUuid: class_instance.uuid,
+        });
+
         //set current class_instance in global object
         this.globalObjectInstance.current_class_instance = class_instance;
 
@@ -362,6 +371,14 @@ export class InstanceCreationHandler {
         sceneInstance.relationclasses_instances = relationclass_instances;
 
         this.logger.log('Relationclass Instance ' + relationclass_instance.uuid + ' added to scene_instance ' + sceneInstance.uuid, 'done');
+
+        // Notify listeners (e.g., SimulationWindow) that the active SceneInstance has changed.
+        this.eventAggregator.publish('sceneInstanceMutated', {
+            sceneInstanceUuid: sceneInstance.uuid,
+            action: 'added',
+            kind: 'relation',
+            instanceUuid: relationclass_instance.uuid,
+        });
 
         // add class instance to global object arra class_instances[]
         //this.globalObjectInstance.relationclass_instances.push(relationclass_instance);

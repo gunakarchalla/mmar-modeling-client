@@ -262,7 +262,7 @@ export class DialogUploadUrdf {
 
                     // Notify interested views (e.g., SimulationWindow) that new URDF-derived instances exist.
                     // We use a dedicated event to avoid overloading unrelated events like `tabChanged`.
-                    this.eventAggregator.publish('urdfUploaded', { robotKey });
+                    // this.eventAggregator.publish('urdfUploaded', { robotKey });
                     const linkNode = link.urdfNode;
 
                     // Set Inertial
@@ -393,7 +393,7 @@ export class DialogUploadUrdf {
             // Notify interested views (e.g., SimulationWindow) that new URDF-derived instances exist.
             // This is required because the simulation panel stays attached while hidden and would
             // otherwise keep showing a stale joint list.
-            this.eventAggregator.publish('urdfUploaded', { robotKey });
+            // this.eventAggregator.publish('urdfUploaded', { robotKey });
 
             // Draw newly created instances if not yet in scene
             await this.persistencyHandler.checkIfClassinstanceInScene();
