@@ -252,6 +252,69 @@ export class GraphicContext {
     return sphere;
   }
 
+  //this creates a graphic cylinder
+  async graphic_cylinder(
+    radiusTop: number,
+    radiusBottom: number,
+    height: number,
+    radialSegments: number,
+    heightSegments: number,
+    color?: string,
+    map?: string,
+    x_rel?: number,
+    y_rel?: number,
+    z_rel?: number,
+    openEnded?: boolean,
+    thetaStart?: number,
+    thetaLength?: number
+  ) {
+
+    const geometry = new THREE.CylinderGeometry(
+      radiusTop,
+      radiusBottom,
+      height,
+      radialSegments,
+      heightSegments,
+      openEnded,
+      thetaStart,
+      thetaLength
+    );
+
+    const material = new THREE.MeshBasicMaterial();
+
+    if (color)
+      material.color.set(color);
+
+    if (map && map != undefined && map != '' && map != null && map != 'undefined') {
+      this.map = map;
+
+      // Create an image
+      const image = new Image();
+      // Create texture
+      const texture = new THREE.Texture(image);
+      // On image load, update texture
+      image.onload = () => { texture.needsUpdate = true };
+      // Set image source
+      image.src = map;
+
+      material.map = texture;
+      material.transparent = true;
+      material.color.set('white');
+    }
+
+    const cylinder: THREE.Mesh = new THREE.Mesh(geometry, material);
+
+    //set position
+    cylinder.position.x = x_rel ? x_rel : cylinder.position.x;
+    cylinder.position.y = y_rel ? y_rel : cylinder.position.y;
+    cylinder.position.z = z_rel ? z_rel : cylinder.position.z;
+
+    this.object3D[cylinder.uuid] = cylinder;
+
+    //return only used for relations
+    return cylinder;
+  }
+
   //load a predefined gltf to the object
   //!! this must load async in the vizRep
   async graphic_gltf(objectString: string | ArrayBuffer, x_rel?: number, y_rel?: number, z_rel?: number, scale?: number[]) {
