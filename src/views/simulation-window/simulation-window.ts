@@ -30,7 +30,6 @@ export class SimulationWindow {
     jointControls: JointControl[] = [];
     private tabChangedSub: any = null;
     private sceneInstanceMutatedSub: any = null;
-    private urdfUploadedSub: any = null;
     private refreshTimer: any = null;
 
     constructor(
@@ -43,14 +42,14 @@ export class SimulationWindow {
 
     async attached() {
         // Keep the simulation panel in sync with active tab changes.
-        // this.tabChangedSub = this.eventAggregator.subscribe('tabChanged', async () => {
-        //     this.requestRefresh();
-        //     // await this.refresh();
-        // });
+        this.tabChangedSub = this.eventAggregator.subscribe('tabChanged', async () => {
+            this.requestRefresh();
+            // await this.refresh();
+        });
 
         // Recompute the joint list when instances are added/removed from the active SceneInstance.
         this.sceneInstanceMutatedSub = this.eventAggregator.subscribe('sceneInstanceMutated', async (payload: any) => {
-            let sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+            const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
             const activeSceneInstanceUuid = sceneInstance?.uuid;
             if (!activeSceneInstanceUuid) return;
 
@@ -61,13 +60,7 @@ export class SimulationWindow {
             }
         });
 
-        // URDF import creates many instances and fills attributes afterwards; refresh once after upload completes.
-        // this.urdfUploadedSub = this.eventAggregator.subscribe('urdfUploaded', async () => {
-        //     this.requestRefresh();
-        //     // await this.refresh();
-        // });
-
-        // await this.refresh();
+        this.requestRefresh();
     }
 
     detaching() {
@@ -77,13 +70,13 @@ export class SimulationWindow {
         this.sceneInstanceMutatedSub?.dispose();
         this.sceneInstanceMutatedSub = null;
 
-        this.urdfUploadedSub?.dispose();
-        this.urdfUploadedSub = null;
+        // this.urdfUploadedSub?.dispose();
+        // this.urdfUploadedSub = null;
 
-        // if (this.refreshTimer) {
-        //     clearTimeout(this.refreshTimer);
-        //     this.refreshTimer = null;
-        // }
+        if (this.refreshTimer) {
+            clearTimeout(this.refreshTimer);
+            this.refreshTimer = null;
+        }
     }
 
     /**
@@ -94,14 +87,8 @@ export class SimulationWindow {
         this.refreshTimer = setTimeout(async () => {
             this.refreshTimer = null;
             await this.refresh();
-        }, 1000);
+        }, 100);
     }
-
-    // private getActiveSceneInstanceUuid(): string | undefined {
-    //     const tabContext = this.globalObjectInstance.tabContext?.[this.globalObjectInstance.selectedTab];
-    //     const sceneInstance = tabContext?.sceneInstance as SceneInstance | undefined;
-    //     return sceneInstance?.uuid;
-    // }
 
     /**
      * Recomputes all joint slider view models for the current tab.
@@ -118,50 +105,47 @@ export class SimulationWindow {
         const sceneType = await this.metaUtility.getTabContextSceneType();
         const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
 
+        if (!sceneType || !sceneInstance) {
+            this.loading = false;
+            return;
+        }
 
-            if (!sceneType || !sceneInstance) {
-                return;
-            }
-
-            this.isRoboticSystemSceneType = sceneType.uuid === SimulationWindow.ROBOTIC_SYSTEM_SCENETYPE_UUID;
-            if (!this.isRoboticSystemSceneType) {
-                return;
-            }
+        this.isRoboticSystemSceneType = sceneType.uuid === SimulationWindow.ROBOTIC_SYSTEM_SCENETYPE_UUID;
+        if (!this.isRoboticSystemSceneType) {
+            this.loading = false;
+            return;
+        }
 
         const jointInstances = sceneInstance.class_instances.filter(ci => ci?.uuid_class === SimulationWindow.META_JOINT_UUID);
 
-        let controls: JointControl[] = [];
-            for (const jointInstance of jointInstances) {
-                const displayName = this.getDisplayName(jointInstance);
-                const { lower, upper } = await this.readLimitBounds(jointInstance);
+        const controls: JointControl[] = [];
+        for (const jointInstance of jointInstances) {
+            const displayName = this.getDisplayName(jointInstance);
+            const { lower, upper } = await this.readLimitBounds(jointInstance);
 
-                // Defensive normalization: ensure lower <= upper for a usable slider.
-                // const normalizedLower = Math.min(lower, upper);
-                // const normalizedUpper = Math.max(lower, upper);
-                // const range = normalizedUpper - normalizedLower;
+            // Initialize the slider with the robot's current joint value (if available).
+            // We clamp to the joint limits to avoid invalid UI states when limits are missing/incorrect.
+            const lowerRounded = Math.round(lower * 100) / 100;
+            const upperRounded = Math.round(upper * 100) / 100;
+            const currentJointValue = this.urdfPoseService.tryGetRobotJointValue(jointInstance) ?? 0;
+            const initialValue = this.clamp(currentJointValue, lowerRounded, upperRounded);
 
-                // Initialize at 0 if inside bounds, otherwise clamp.
-                // const initialValue = this.clamp(0, normalizedLower, normalizedUpper);
+            controls.push({
+                instance: jointInstance,
+                displayName,
+                lower: lowerRounded,
+                // lower: Math.round(lower * 100) / 100,
+                // upper: Math.round(upper * 100) / 100,
+                upper: upperRounded,
+                value: initialValue,
+                step: 0.01,
+                disabled: false,
+            });
+        }
 
-                // Choose a small step for a smooth feel; keep it stable for tiny ranges.
-                // const step = range > 0 ? Math.max(range / 100, 0.001) : 1;
+        this.jointControls = controls;
 
-                controls.push({
-                    instance: jointInstance,
-                    displayName,
-                    lower: Math.round(lower),
-                    // lower: Math.round(lower * 100) / 100,
-                    // upper: Math.round(upper * 100) / 100,
-                    upper: Math.round(upper),
-                    value: 1,
-                    step: 1,
-                    disabled: false,
-                });
-            }
-
-            this.jointControls = controls;
-
-            this.loading = false;
+        this.loading = false;
 
     }
 

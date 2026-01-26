@@ -14,8 +14,9 @@
 
       <!-- if input type is slider -->
       <div style="display: flex; flex-direction: row; align-items: center; width: 100%;" if.bind="columns[j].ui_component=='slider'||columns[j].ui_component=='Slider'">
-        <span style="margin-right: 8px; white-space: nowrap; width: 25px;">Val:${rows[i][j].value | numerise:rows[i][j].metaAttribute.default_value:facetsAll[j][0]}</span>
-        <mdc-slider style="flex: 1;" min.bind="facetsAll[j][0]" max.bind="facetsAll[j][1]" value.bind="rows[i][j].value | numerise:rows[i][j].metaAttribute.default_value:facetsAll[j][0]" step.bind="facetsAll[j][2] || 1" click.trigger="fieldChange(rows[i][j])"></mdc-slider>
+        <span style="margin-right: 2.2rem; white-space: nowrap; width: 25px;">Val:${rows[i][j].value | numerise:rows[i][j].metaAttribute.default_value:facetsAll[j][0]}</span>
+
+        <input style="width: 100%;" type="range" min.bind="facetsAll[j][0]" max.bind="facetsAll[j][1]" value.bind="rows[i][j].value | numerise:rows[i][j].metaAttribute.default_value:facetsAll[j][0]" step.bind="facetsAll[j][2] || 1" class="slider" id="RangeSlider${i}${j}" input.trigger="fieldChange(rows[i][j])" change.trigger="fieldChange(rows[i][j])">
       </div>
 
       <!-- if input type is dropdown -->
@@ -41,7 +42,6 @@
           current-dialog.bind="nestedDialogs[i][j]"></dialog-table-attribute>
       </mdc-dialog>
       </div>
-
       </td>
     </tr>
     </table>  

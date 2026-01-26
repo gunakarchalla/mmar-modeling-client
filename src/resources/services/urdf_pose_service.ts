@@ -165,6 +165,49 @@ export class UrdfPoseService {
         return true;
     }
 
+    /**
+     * Reads the current joint value from the cached URDF robot (if available).
+     *
+     * Why this exists:
+     * - The Simulation UI should initialize sliders to the robot's current joint state.
+     * - urdf-loader versions may expose the value via different shapes (method/property).
+     */
+    tryGetRobotJointValue(jointInstance: ClassInstance): number | undefined {
+        if (!jointInstance) return undefined;
+
+        const robotKey = ((jointInstance as any).urdfRobotKey as string) || 'default';
+        const record = this.robotsByKey.get(robotKey);
+        if (!record?.robot) return undefined;
+
+        const urdfJointName = this.getUrdfNameFromInstance(jointInstance);
+        if (!urdfJointName) return undefined;
+
+        const urdfJoint = this.getUrdfJoint(record.robot, urdfJointName);
+        if (!urdfJoint) return undefined;
+
+        // Prefer explicit getter if present; otherwise fall back to the stored property.
+        let raw: any;
+        if (typeof (urdfJoint as any).getJointValue === 'function') {
+            raw = (urdfJoint as any).getJointValue();
+        } else if ('jointValue' in (urdfJoint as any)) {
+            raw = (urdfJoint as any).jointValue;
+        } else {
+            return undefined;
+        }
+
+        // Some implementations may store the value as an array; pick the first finite number.
+        if (Array.isArray(raw)) {
+            for (const v of raw) {
+                const n = this.toNumber(v);
+                if (Number.isFinite(n)) return n;
+            }
+            return undefined;
+        }
+
+        const n = this.toNumber(raw);
+        return Number.isFinite(n) ? n : undefined;
+    }
+
     private getUrdfNameFromInstance(instance: ClassInstance): string | undefined {
         const ref = (instance as any).urdfRef as UrdfRef | undefined;
         if (ref?.name) return ref.name;

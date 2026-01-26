@@ -11,27 +11,18 @@
     <div if.bind="!loading && !errorMessage && isRoboticSystemSceneType">
         <div if.bind="!jointControls.length">No Joint instances found in the active scene.</div>
 
-        <div repeat.for="ctrl of jointControls" style="margin: 12px 0;">
+        <div repeat.for="i of jointControls.length" style="margin: 12px 0;">
             <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                <div>${ctrl.displayName}</div>
-                <div>Value: ${ctrl.value}</div>
+                <div>${jointControls[i].displayName}</div>
+                <div>Value: ${jointControls[i].value}</div>
             </div>
 
             <div style="display: flex; gap: 12px; align-items: center;">
-                <div style="min-width: 72px;">Min: ${ctrl.lower}</div>
+                <div style="min-width: 72px;">Min: ${jointControls[i].lower}</div>
 
-                <mdc-slider
-                    style="flex: 1;"
-                    min.bind="ctrl.lower"
-                    max.bind="ctrl.upper"
-                    step.bind="ctrl.step"
-                    value.bind="ctrl.value"
-                    disabled.bind="ctrl.disabled"
-                    input.trigger="onJointValueChanged(ctrl)"
-                    change.trigger="onJointValueChanged(ctrl)">
-                </mdc-slider>
+                <input style="width: 100%;" type="range" min.bind="jointControls[i].lower" max.bind="jointControls[i].upper" value.bind="jointControls[i].value" step.bind="jointControls[i].step" class="slider" id="RangeSlider${i}" input.trigger="onJointValueChanged(jointControls[i])" change.trigger="onJointValueChanged(jointControls[i])">
 
-                <div style="min-width: 72px;">Max: ${ctrl.upper}</div>
+                <div style="min-width: 72px;">Max: ${jointControls[i].upper}</div>
             </div>
         </div>
     </div>
