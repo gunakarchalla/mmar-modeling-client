@@ -1,6 +1,5 @@
 import { EventAggregator } from 'aurelia';
 import { ClassInstance, AttributeInstance, SceneType, SceneInstance } from '../../../../mmar-global-data-structure';
-import { GlobalDefinition } from 'resources/global_definitions';
 import { MetaUtility } from 'resources/services/meta_utility';
 import { UrdfPoseService } from 'resources/services/urdf_pose_service';
 import { InstanceUtility } from 'resources/services/instance_utility';
@@ -33,7 +32,6 @@ export class SimulationWindow {
     private refreshTimer: any = null;
 
     constructor(
-        private globalObjectInstance: GlobalDefinition,
         private metaUtility: MetaUtility,
         private urdfPoseService: UrdfPoseService,
         private eventAggregator: EventAggregator,
@@ -69,9 +67,6 @@ export class SimulationWindow {
 
         this.sceneInstanceMutatedSub?.dispose();
         this.sceneInstanceMutatedSub = null;
-
-        // this.urdfUploadedSub?.dispose();
-        // this.urdfUploadedSub = null;
 
         if (this.refreshTimer) {
             clearTimeout(this.refreshTimer);
@@ -134,8 +129,6 @@ export class SimulationWindow {
                 instance: jointInstance,
                 displayName,
                 lower: lowerRounded,
-                // lower: Math.round(lower * 100) / 100,
-                // upper: Math.round(upper * 100) / 100,
                 upper: upperRounded,
                 value: initialValue,
                 step: 0.01,

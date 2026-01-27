@@ -1,26 +1,37 @@
 import { EventAggregator } from 'aurelia';
 import Uppy from '@uppy/core';
 import Dashboard from '@uppy/dashboard';
-
+import { HybridAlgorithmsService } from 'resources/services/hybrid_algorithms_service';
 import '@uppy/core/dist/style.min.css';
 import '@uppy/dashboard/dist/style.min.css';
-// import 'unzipit' as unzipit;
 import { MetaUtility } from 'resources/services/meta_utility';
 import { InstanceCreationHandler } from 'resources/instance_creation_handler';
 import { InstanceUtility } from 'resources/services/instance_utility';
 import { PersistencyHandler } from 'resources/persistency_handler';
 import { Logger } from 'resources/services/logger';
-import { AttributeInstance, ClassInstance, RoleInstance, RelationclassInstance, Class, Relationclass, Attribute } from '../../../../mmar-global-data-structure';
-import { GlobalDefinition } from 'resources/global_definitions';
-import { GlobalRelationclassObject } from 'resources/global_relationclass_object';
-import { RotationConverter } from 'resources/services/rotation_converter';
+import { ClassInstance } from '../../../../mmar-global-data-structure';
 import { UrdfPoseService } from 'resources/services/urdf_pose_service';
 import * as THREE from 'three';
 import URDFLoader, { URDFRobot, URDFLink, URDFJoint } from 'urdf-loader';
+import * as unzipit from 'unzipit';
+
+// Minimal shape of an unzipit entry we depend on.
+// unzipit entries provide one or more of these read methods at runtime.
+type ZipEntry = {
+    text?: () => Promise<string>;
+    arrayBuffer?: () => Promise<ArrayBuffer>;
+    blob?: () => Promise<Blob>;
+};
+
+type ZipIndex = {
+    byPath: Map<string, ZipEntry>;
+    byPathLower: Map<string, ZipEntry>;
+    entries: Array<{ path: string; pathLower: string; baseNameLower: string; entry: ZipEntry }>;
+};
 
 export class DialogUploadUrdf {
     private uppy: Uppy | null = null;
-    // Cache meshes discovered in the extracted URDF to avoid repeated file reads
+    // Cache meshes discovered during a single import to avoid repeated entry reads.
     private meshCache = new Map<string, { format: 'gltf' | 'glb' | 'stl', data: string | ArrayBuffer, scale: number[] }>();
 
     constructor(
@@ -30,10 +41,8 @@ export class DialogUploadUrdf {
         private instanceUtility: InstanceUtility,
         private persistencyHandler: PersistencyHandler,
         private logger: Logger,
-        private globalObjectInstance: GlobalDefinition,
-        private globalRelationclassObject: GlobalRelationclassObject,
-        private rotationConverter: RotationConverter,
-        private urdfPoseService: UrdfPoseService
+        private urdfPoseService: UrdfPoseService,
+        private hybridAlgorithmsService: HybridAlgorithmsService
     ) {
         this.eventAggregator.subscribe('openDialogUploadUrdf', async () => {
             await this.open();
@@ -72,7 +81,7 @@ export class DialogUploadUrdf {
     }
 
     async upload() {
-        // Get selected file and extract to Origin Private File System (OPFS)
+        // Get selected file and directly process the zip in-memory.
         const files = this.uppy?.getFiles ? this.uppy.getFiles() : [];
         if (!files || files.length === 0) {
             return;
@@ -87,56 +96,30 @@ export class DialogUploadUrdf {
         }
 
         try {
-            // Parse the zip without loading entire archive into memory
+            // Clear any previous import cache so this run only caches what it needs.
+            this.meshCache.clear();
+
+            // Parse the zip in-memory.
             const blob: Blob = file.data as Blob;
-            const unzipit: any = await import('unzipit');
+
             const { entries } = await unzipit.unzip(blob);
 
-            // Create a root folder in OPFS for URDFs, namespaced by zip filename
-            const opfsRoot: any = await (navigator as any).storage.getDirectory();
-            const urdfRoot = await opfsRoot.getDirectoryHandle('urdf', { create: true });
-            const zipBaseName = (file.name || 'archive').replace(/\.zip$/i, '');
-            const targetRoot = await urdfRoot.getDirectoryHandle(zipBaseName, { create: true });
+            // Building a compact index so lookups don't scan repeatedly.
+            // Note: unzipit exposes a plain object of entries keyed by path.
+            const zipIndex = this.createZipIndex(entries as Record<string, ZipEntry>);
 
-            // Utility to ensure directory path exists
-            const ensureDir = async (dirHandle: FileSystemDirectoryHandle, parts: string[]) => {
-                let current = dirHandle;
-                for (const part of parts) {
-                    if (!part || part === '.') continue;
-                    current = await current.getDirectoryHandle(part, { create: true });
-                }
-                return current;
-            };
-
-            // Iterate entries and write to OPFS, preserving folder structure
-            for (const [name, entry] of Object.entries(entries)) {
-                const normalizedName = name.replace(/\\/g, '/');
-                // Skip directory placeholders; we'll create dirs on demand
-                if (normalizedName.endsWith('/')) {
-                    await ensureDir(targetRoot, normalizedName.replace(/\/$/, '').split('/'));
-                    continue;
-                }
-
-                const parts = normalizedName.split('/');
-                const fileName = parts.pop();
-                if (!fileName) continue;
-                const dir = await ensureDir(targetRoot, parts);
-
-                const fileHandle = await dir.getFileHandle(fileName, { create: true });
-                const writable = await (fileHandle as any).createWritable();
-                // Use Blob path to avoid large JS heap allocations where possible
-                const blob = await (entry as any).blob();
-                await writable.write(blob);
-                await writable.close();
-            }
-            // Clear selection after successful extraction
+            // Clear selection after successful read
             this.uppy?.removeFile(file.id);
-            this.uppy.removeFile(file.id);
 
-            // After extraction, discover a URDF file and instantiate links
-            await this.processExtractedUrdf(targetRoot);
+            // Discover a URDF file in the zip and instantiate links/joints.
+            await this.processZipUrdf(zipIndex);
         } catch (e) {
             // Keep silent for now; can add user feedback/logging later
+            this.logger?.log(`URDF upload failed: ${e?.message || e}`, 'error');
+        } finally {
+            // Ensure transient structures don't survive the import.
+            // Note: mesh data referenced by created instances (urdfVizRep) stays alive as needed.
+            this.meshCache.clear();
         }
     }
 
@@ -145,24 +128,26 @@ export class DialogUploadUrdf {
             this.uppy.destroy();
             this.uppy = null;
         }
+
+        // Release any transient import cache when the dialog is closed.
+        this.meshCache.clear();
     }
 
-    // Parse the extracted URDF using urdf-loader and instantiate Link/Joint classes.
+    // Parse the URDF from a zip using urdf-loader and instantiate Link/Joint classes.
     // Rendering stays delegated to PersistencyHandler + GraphicContext via urdfVizRep.
-    private async processExtractedUrdf(rootDir: any) {
+    private async processZipUrdf(zipIndex: ZipIndex) {
         try {
-            const urdfFileHandle = await this.findUrdfFile(rootDir);
-            if (!urdfFileHandle) {
+            const urdfEntry = this.findUrdfEntry(zipIndex);
+            if (!urdfEntry) {
                 this.logger?.log('No URDF file found in extracted archive', 'info');
                 return;
             }
 
-            const urdfFile = await urdfFileHandle.getFile();
-            const xmlText = await urdfFile.text();
+            const xmlText = await this.readEntryAsText(urdfEntry);
 
             // urdf-loader handles the XML parsing and builds a THREE.Object3D hierarchy for links/joints.
             // We disable automatic mesh loading because we want to:
-            // 1) keep mesh IO in OPFS (zip extraction) and
+            // 1) load meshes from the already-open zip in-memory, and
             // 2) reuse the existing GLTF/STL rendering path via GraphicContext in PersistencyHandler.
             const urdfLoader = new URDFLoader();
             urdfLoader.parseVisual = false;
@@ -260,9 +245,6 @@ export class DialogUploadUrdf {
 
                     // Attribute mapping reads from the underlying URDF DOM node stored by urdf-loader.
 
-                    // Notify interested views (e.g., SimulationWindow) that new URDF-derived instances exist.
-                    // We use a dedicated event to avoid overloading unrelated events like `tabChanged`.
-                    // this.eventAggregator.publish('urdfUploaded', { robotKey });
                     const linkNode = link.urdfNode;
 
                     // Set Inertial
@@ -292,7 +274,7 @@ export class DialogUploadUrdf {
 
                     // Attach URDF mesh to class instance (STL/GLTF)
                     // Try to pick up a referenced mesh (STL/GLTF) from the extracted archive for rendering
-                    const meshInfo = await this.extractMeshFromVisuals(visualEls, rootDir);
+                    const meshInfo = await this.extractMeshFromVisuals(visualEls, zipIndex);
                     if (meshInfo) {
                         (classInstance as any).urdfVizRep = meshInfo;
                     }
@@ -337,8 +319,8 @@ export class DialogUploadUrdf {
 
                     await this.setSimpleAttribute(classInstance, 'Name', jointName);
                     // Map URDF type to Metamodel Type (Capitalized)
-                    const typeMap: any = { 'revolute': 'Revolute', 'continuous': 'Continuous', 'prismatic': 'Prismatic', 'fixed': 'Fixed', 'floating': 'Floating', 'planar': 'Planar' };
-                    await this.setSimpleAttribute(classInstance, 'Type', typeMap[jointType] || 'Fixed');
+
+                    await this.setSimpleAttribute(classInstance, 'Type', jointType || 'Fixed');
 
                     // Origin
                     if (originElem) {
@@ -374,14 +356,14 @@ export class DialogUploadUrdf {
                     const childLinkName = jointNode?.getElementsByTagName('child')[0]?.getAttribute('link');
                     if (childLinkName && linkMap.has(childLinkName)) {
                         const childInstance = linkMap.get(childLinkName);
-                        await this.setReferenceAttribute(classInstance, 'Child link', childInstance, 'classInstance');
+                        await this.setReferenceAttribute(classInstance, 'Child link', childInstance);
                     }
 
                     // Parent Link Reference
                     const parentLinkName = jointNode?.getElementsByTagName('parent')[0]?.getAttribute('link');
                     if (parentLinkName && linkMap.has(parentLinkName)) {
                         const parentInstance = linkMap.get(parentLinkName);
-                        await this.setReferenceAttribute(classInstance, 'Parent link', parentInstance, 'classInstance');
+                        await this.setReferenceAttribute(classInstance, 'Parent link', parentInstance);
                     }
                 }
             }
@@ -389,11 +371,6 @@ export class DialogUploadUrdf {
             // Register the parsed robot + instance mapping so table-attribute edits can recompute poses.
             // This is intentionally done after all instances are created.
             this.urdfPoseService.registerRobot(robotKey, robot, scaleFactor, createdLinkInstances, createdJointInstances);
-
-            // Notify interested views (e.g., SimulationWindow) that new URDF-derived instances exist.
-            // This is required because the simulation panel stays attached while hidden and would
-            // otherwise keep showing a stale joint list.
-            // this.eventAggregator.publish('urdfUploaded', { robotKey });
 
             // Draw newly created instances if not yet in scene
             await this.persistencyHandler.checkIfClassinstanceInScene();
@@ -404,39 +381,84 @@ export class DialogUploadUrdf {
         }
     }
 
-    // Helpers
-    private findOrigin(el: Element, tagName?: string): Element | undefined {
-        if (tagName) {
-            const tag = el.getElementsByTagName(tagName)[0];
-            return tag ? tag.getElementsByTagName('origin')[0] : undefined;
-        }
-        return el.getElementsByTagName('origin')[0];
+    // **************Helper Functions***************************** //
+
+    // To normalize zip paths for consistent lookup. Uses forward slashes and trims leading ./ or /
+    private normalizeZipPath(path: string) {
+        // unzipit keys are path-like, but we normalize to be robust across zippers.
+        return String(path).replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\//, '');
     }
 
-    private parseOrigin(originElem: Element | undefined, scaleFactor: number) {
-        let coords = { x: 0, y: 0, z: 0 };
-        if (!originElem) return coords;
-        const xyzAttr = originElem.getAttribute('xyz');
-        if (!xyzAttr) return coords;
-        const parts = xyzAttr.trim().split(/\s+/).map(v => parseFloat(v));
-        if (parts.length >= 3 && parts.every(n => !isNaN(n))) {
-            coords = { x: parts[0] * scaleFactor, y: parts[1] * scaleFactor, z: parts[2] * scaleFactor };
+    // Build a compact index of zip entries for efficient lookup by path or base name. Used during URDF processing.
+    private createZipIndex(entries: Record<string, ZipEntry>): ZipIndex {
+        const byPath = new Map<string, ZipEntry>();
+        const byPathLower = new Map<string, ZipEntry>();
+        const list: ZipIndex['entries'] = [];
+
+        for (const [name, entry] of Object.entries(entries || {})) {
+            const normalized = this.normalizeZipPath(name);
+            if (!normalized || normalized.endsWith('/')) {
+                continue;
+            }
+
+            const pathLower = normalized.toLowerCase();
+            const baseNameLower = (normalized.split('/').pop() || '').toLowerCase();
+
+            byPath.set(normalized, entry);
+            byPathLower.set(pathLower, entry);
+            list.push({ path: normalized, pathLower, baseNameLower, entry });
         }
-        return coords;
+
+        return { byPath, byPathLower, entries: list };
     }
 
-    private parseRPY(originElem: Element | undefined) {
-        let rpy = { roll: 0, pitch: 0, yaw: 0 };
-        if (!originElem) return rpy;
-        const rpyAttr = originElem.getAttribute('rpy');
-        if (!rpyAttr) return rpy;
-        const parts = rpyAttr.trim().split(/\s+/).map(v => parseFloat(v));
-        if (parts.length >= 3 && parts.every(n => !isNaN(n))) {
-            rpy = { roll: parts[0], pitch: parts[1], yaw: parts[2] };
+    // Find a URDF file entry in the zip index. 
+    private findUrdfEntry(zipIndex: ZipIndex) {
+        // Prefer URDFs inside a directory named 'urdf'; fallback to first *.urdf anywhere in archive.
+        let fallback: ZipEntry | null = null;
+
+        for (const item of zipIndex.entries) {
+            if (!item.baseNameLower.endsWith('.urdf')) continue;
+            if (item.pathLower.includes('/urdf/')) {
+                return item.entry;
+            }
+            if (!fallback) fallback = item.entry;
         }
-        return rpy;
+
+        return fallback;
     }
 
+    // Read a zip entry as text, using available methods. Used for URDF XML and GLTF JSON.
+    private async readEntryAsText(entry: ZipEntry): Promise<string> {
+        // unzipit entry supports .text(); fallback via Blob if needed.
+        if (entry && typeof entry.text === 'function') {
+            return await entry.text();
+        }
+
+        if (entry && typeof entry.blob === 'function') {
+            const b = await entry.blob();
+            return await b.text();
+        }
+
+        throw new Error('Zip entry cannot be read as text');
+    }
+
+    // Read a zip entry as ArrayBuffer, using available methods. Used for binary mesh data.
+    private async readEntryAsArrayBuffer(entry: ZipEntry): Promise<ArrayBuffer> {
+        // unzipit entry supports .arrayBuffer(); fallback via Blob if needed.
+        if (entry && typeof entry.arrayBuffer === 'function') {
+            return await entry.arrayBuffer();
+        }
+
+        if (entry && typeof entry.blob === 'function') {
+            const b = await entry.blob();
+            return await b.arrayBuffer();
+        }
+
+        throw new Error('Zip entry cannot be read as ArrayBuffer');
+    }
+
+    // Parse an <origin> element into a flat map for table attribute setting.
     private parseOriginToMap(originElem: Element | undefined) {
         if (!originElem) return {};
         const xyz = (originElem.getAttribute('xyz') || '0 0 0').split(/\s+/);
@@ -447,6 +469,7 @@ export class DialogUploadUrdf {
         };
     }
 
+    // Parse an <inertia> element into a flat map for table attribute setting.
     private parseInertiaToMap(inertiaElem: Element | undefined) {
         if (!inertiaElem) return {};
         const attrs = ['ixx', 'ixy', 'ixz', 'iyy', 'iyz', 'izz'];
@@ -455,6 +478,7 @@ export class DialogUploadUrdf {
         return res;
     }
 
+    // Parse a <geometry> element into a flat map for table attribute setting.
     private parseGeometryToMap(geoElem: Element | undefined) {
         if (!geoElem) return {};
         const box = geoElem.getElementsByTagName('box')[0];
@@ -469,6 +493,7 @@ export class DialogUploadUrdf {
         return {};
     }
 
+    // Parse a <material> element into a flat map for table attribute setting.
     private parseMaterialToMap(matElem: Element | undefined) {
         if (!matElem) return {};
         const name = matElem.getAttribute('name') || '';
@@ -491,6 +516,7 @@ export class DialogUploadUrdf {
         return { 'Name': name, 'Color': color, 'Texture': textureEl?.getAttribute('filename') || '' };
     }
 
+    // Parse a scale attribute string into an array of three numbers.
     private parseScaleAttr(scaleAttr?: string | null): number[] {
         if (!scaleAttr) return [1, 1, 1];
         const parts = scaleAttr.trim().split(/\s+/).map(v => parseFloat(v));
@@ -500,62 +526,39 @@ export class DialogUploadUrdf {
         return [1, 1, 1];
     }
 
+    // Normalize a mesh filename from URDF (e.g., package://path/to/mesh) to a zip-relative path.
     private normalizeMeshPath(filename: string) {
         return filename.replace(/^package:\/\//i, '').replace(/^\//, '');
     }
 
-    private async getMeshHandleByPath(rootDir: any, normalizedPath: string): Promise<any | null> {
-        try {
-            const segments = normalizedPath.split('/').filter(Boolean);
-            let current = rootDir;
-            for (let i = 0; i < segments.length - 1; i++) {
-                current = await current.getDirectoryHandle(segments[i]);
-            }
-            return await current.getFileHandle(segments[segments.length - 1]);
-        } catch (err) {
-            return null;
-        }
-    }
-
-    private async findMeshFileHandle(rootDir: any, filename: string): Promise<any | null> {
-        const targetName = filename.toLowerCase();
-        const queue: Array<any> = [rootDir];
-        while (queue.length) {
-            const dir = queue.shift();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            for await (const [name, handle] of (dir as any).entries()) {
-                if (handle.kind === 'file' && name.toLowerCase() === targetName) {
-                    return handle;
-                }
-                if (handle.kind === 'directory') {
-                    queue.push(handle);
-                }
-            }
-        }
-        return null;
-    }
-
-    // Load a mesh file from OPFS and normalize output shape for GLTF/GLB/STL
-    private async loadMeshData(rootDir: any, filename: string, scaleAttr?: string | null) {
+    // Load a mesh file from the in-memory zip entries and normalize output shape for GLTF/GLB/STL
+    private async loadMeshData(zipIndex: ZipIndex, filename: string, scaleAttr?: string | null) {
         const normalized = this.normalizeMeshPath(filename);
         const cacheKey = `${normalized}|${scaleAttr || ''}`;
         if (this.meshCache.has(cacheKey)) {
             return this.meshCache.get(cacheKey);
         }
 
-        const directHandle = await this.getMeshHandleByPath(rootDir, normalized);
-        const handle = directHandle || await this.findMeshFileHandle(rootDir, normalized.split('/').pop() || normalized);
-        if (!handle) return null;
+        // Resolve by path first, then fallback by base name search.
+        const normalizedKey = this.normalizeZipPath(normalized);
+        const direct = zipIndex.byPath.get(normalizedKey) || zipIndex.byPathLower.get(normalizedKey.toLowerCase());
 
-        const file = await handle.getFile();
-        const ext = (file.name || filename).toLowerCase().split('.').pop();
+        let entry = direct;
+        if (!entry) {
+            const baseNameLower = (normalizedKey.split('/').pop() || '').toLowerCase();
+            // Fallback scan: match by base name to tolerate archives that contain different top-level folders.
+            entry = zipIndex.entries.find(e => e.baseNameLower === baseNameLower)?.entry;
+        }
+        if (!entry) return null;
+
+        const ext = (normalizedKey || filename).toLowerCase().split('.').pop();
         const format = ext === 'stl' ? 'stl' : ext === 'glb' ? 'glb' : 'gltf';
 
         let data: string | ArrayBuffer;
         if (format === 'gltf') {
-            data = await file.text();
+            data = await this.readEntryAsText(entry);
         } else {
-            data = await file.arrayBuffer();
+            data = await this.readEntryAsArrayBuffer(entry);
         }
 
         const scale = this.parseScaleAttr(scaleAttr);
@@ -565,14 +568,14 @@ export class DialogUploadUrdf {
     }
 
     // Walk visual tags to find the first usable mesh reference
-    private async extractMeshFromVisuals(visualEls: Element[], rootDir: any) {
+    private async extractMeshFromVisuals(visualEls: Element[], zipIndex: ZipIndex) {
         for (const visual of visualEls) {
             const meshEl = visual.getElementsByTagName('mesh')[0];
             if (!meshEl) continue;
             const filename = meshEl.getAttribute('filename');
             if (!filename) continue;
             const scaleAttr = meshEl.getAttribute('scale');
-            const meshData = await this.loadMeshData(rootDir, filename, scaleAttr);
+            const meshData = await this.loadMeshData(zipIndex, filename, scaleAttr);
             if (meshData) {
                 return meshData;
             }
@@ -580,11 +583,13 @@ export class DialogUploadUrdf {
         return null;
     }
 
+    // Set a simple (non-table, non-reference) attribute value on a class instance.
     private async setSimpleAttribute(classInstance: ClassInstance, attrName: string, value: string) {
         const attrInst = await this.instanceUtility.getAttributeInstanceFromClassInstance(attrName, classInstance.uuid, "name");
         if (attrInst) attrInst.value = value;
     }
 
+    // Set a table attribute value on a class instance from an array of row data maps.
     private async setTableAttribute(classInstance: ClassInstance, attrName: string, rows: any[]) {
         const parentAttrInst = await this.instanceUtility.getAttributeInstanceFromClassInstance(attrName, classInstance.uuid, "name");
         if (!parentAttrInst) return;
@@ -641,7 +646,8 @@ export class DialogUploadUrdf {
         }
     }
 
-    private async setReferenceAttribute(classInstance: ClassInstance, attrName: string, targetInstance: ClassInstance, targetType: string) {
+    // Set a reference attribute on a class instance pointing to a target instance.
+    private async setReferenceAttribute(classInstance: ClassInstance, attrName: string, targetInstance: ClassInstance) {
         const attrInst = await this.instanceUtility.getAttributeInstanceFromClassInstance(attrName, classInstance.uuid, "name");
         if (!attrInst) return;
 
@@ -658,35 +664,13 @@ export class DialogUploadUrdf {
             targetInstance, null, 'attribute_reference', null, targetInstance.name, parentRole.uuid
         );
 
+        roleInstance.name = targetInstance.attribute_instance.filter(ai => ai.name === 'Name')[0]?.value || targetInstance.name;
+
         attrInst.role_instance_from = roleInstance;
+
         attrInst.value = targetInstance.name;
-    }
 
-    private async findUrdfFile(dirHandle: any): Promise<any | null> {
-        // Prefer files inside a directory named 'urdf'; fallback to first *.urdf anywhere under root
-        const queue: Array<{ handle: any, path: string }> = [{ handle: dirHandle, path: '' }];
-        let fallback: any = null;
-
-        while (queue.length > 0) {
-            const { handle, path } = queue.shift();
-            // Collect entries
-            // entries(): AsyncIterable<[name, handle]> is not typed in TS DOM lib for OPFS yet
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            for await (const [name, child] of (handle as any).entries()) {
-                const childPath = path ? `${path}/${name}` : name;
-                if (child.kind === 'file' && name.toLowerCase().endsWith('.urdf')) {
-                    // If inside an 'urdf' directory, return immediately
-                    if (childPath.toLowerCase().includes('/urdf/')) {
-                        return child;
-                    }
-                    // Else keep as fallback if none chosen yet
-                    if (!fallback) fallback = child;
-                } else if (child.kind === 'directory') {
-                    queue.push({ handle: child, path: childPath });
-                }
-            }
-        }
-
-        return fallback;
+        //run hybrid algorithm for Statechange -> reference
+        await this.hybridAlgorithmsService.checkHybridAlgorithms(attrInst);
     }
 }
