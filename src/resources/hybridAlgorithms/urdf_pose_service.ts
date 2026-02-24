@@ -4,6 +4,8 @@ import { AttributeInstance, ClassInstance } from '../../../../mmar-global-data-s
 import { GlobalDefinition } from '../global_definitions';
 import { MetaUtility } from '../services/meta_utility';
 import { Logger } from '../services/logger';
+import { EventAggregator } from 'aurelia';
+import { tableAtrributeUpdatePayload } from 'dialogs/dialog-table-attribute/dialog-table-attribute';
 
 type UrdfRef = {
     kind: 'link' | 'joint';
@@ -33,8 +35,31 @@ export class UrdfPoseService {
     constructor(
         private globalObjectInstance: GlobalDefinition,
         private metaUtility: MetaUtility,
-        private logger: Logger
-    ) { }
+        private logger: Logger,
+        private eventAggregator: EventAggregator
+    ) {
+
+        // URDF kinematics update hook:
+        // If the user edits a Joint's Origin table (Roll/Pitch/Yaw/Position) we recompute the
+        // robot poses via `urdf-loader` and update all link/joint transforms in the scene.
+        this.eventAggregator.subscribe('tableAttributeChanged', async (payload: tableAtrributeUpdatePayload) => {
+            const { attributeInstance, currentAttribute, currentClassInstance, currentClass } = payload;
+
+            try {
+                const currentClassName = (currentClass?.name || '').toLowerCase();
+                const currentAttributeName = (currentAttribute?.name || '').toLowerCase();
+                const hasUrdfRef = !!(currentClassInstance && (currentClassInstance as any).urdfRef);
+
+                if (currentClassInstance && hasUrdfRef && currentClassName === 'joint' && currentAttributeName === 'origin') {
+                    // `this.attributeInstance` is the parent (table) attribute instance (Origin).
+                    // `attributeInstance` is the edited cell.
+                    await this.tryUpdateRobotFromJointOriginEdit(currentClassInstance, attributeInstance);
+                }
+            } catch (err) {
+                this.logger?.log(`Error handling table attribute change for URDF pose update: ${err instanceof Error ? err.message : String(err)}`, 'error');
+            }
+        });
+    }
 
     /**
      * Register (or replace) a robot cache record.
