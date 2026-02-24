@@ -7,7 +7,7 @@ import { bindable, valueConverter } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
 import { MdcDialog } from "@aurelia-mdc-web/dialog";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
-import { UrdfPoseService } from "resources/services/urdf_pose_service";
+import { UrdfPoseService } from "resources/hybridAlgorithms/urdf_pose_service";
 
 export class DialogTableAttribute {
 

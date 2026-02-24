@@ -1,7 +1,7 @@
 import { EventAggregator } from 'aurelia';
 import { ClassInstance, AttributeInstance, SceneType, SceneInstance } from '../../../../mmar-global-data-structure';
 import { MetaUtility } from 'resources/services/meta_utility';
-import { UrdfPoseService } from 'resources/services/urdf_pose_service';
+import { UrdfPoseService } from 'resources/hybridAlgorithms/urdf_pose_service';
 import { InstanceUtility } from 'resources/services/instance_utility';
 
 type JointControl = {
