@@ -4,7 +4,9 @@ import { GlobalDefinition } from "resources/global_definitions";
 import { InstanceUtility } from "./instance_utility";
 import { ObjectspaceAlgorithms } from 'resources/hybridAlgorithms/objectspace_algorithms';
 import { AttributeInstance } from '../../../../mmar-global-data-structure/models/instance/Instance_attributes.structure';
-import { ClassInstance, PortInstance } from '../../../../mmar-global-data-structure';
+import { Attribute, Class, ClassInstance, PortInstance } from '../../../../mmar-global-data-structure';
+import { UrdfPoseService } from 'resources/hybridAlgorithms/urdf_pose_service';
+import { Logger } from './logger';
 
 @singleton()
 export class HybridAlgorithmsService {
@@ -13,16 +15,45 @@ export class HybridAlgorithmsService {
         private globalObjectInstance: GlobalDefinition,
         private instanceUtility: InstanceUtility,
         private objectspaceAlgorithms: ObjectspaceAlgorithms,
-        private statechangeAlgorithms: StatechangeAlgorithms
+        private statechangeAlgorithms: StatechangeAlgorithms,
+        private urdfPoseService: UrdfPoseService,
+        private logger: Logger,
     ) {
 
     }
 
-    async checkHybridAlgorithms(attributeInstance?: AttributeInstance, classInstances?: ClassInstance[], portInstances?: PortInstance[]) {
+    async checkHybridAlgorithms(
+        attributeInstance?: AttributeInstance,
+        classInstances?: ClassInstance[],
+        portInstances?: PortInstance[],
+        currentClass?: Class,
+        currentAttribute?: Attribute
+    ) {
 
-        // check if open tab is an ObjectSpace Scene
+        // check if any open tabs
         if (this.globalObjectInstance.tabContext.length > 0) {
             const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+
+            // 113c3133-bf77-493a-a36f-553e77832280 is the uuid for the Robotic System SceneType
+            if (sceneInstance && sceneInstance.uuid_scene_type == "113c3133-bf77-493a-a36f-553e77832280") {
+
+                try {
+                    const currentClassName = (currentClass?.name || '').toLowerCase();
+                    const currentAttributeName = (currentAttribute?.name || '').toLowerCase();
+                    const hasUrdfRef = !!(classInstances[0] && (classInstances[0] as any).urdfRef);
+
+                    if (classInstances[0] && hasUrdfRef && currentClassName === 'joint' && currentAttributeName === 'origin') {
+                        // `this.attributeInstance` is the parent (table) attribute instance (Origin).
+                        // `attributeInstance` is the edited cell.
+                        await this.urdfPoseService.tryUpdateRobotFromJointOriginEdit(classInstances[0], attributeInstance);
+                    }
+                } catch (err) {
+                    this.logger?.log(`Error handling table attribute change for URDF pose update: ${err instanceof Error ? err.message : String(err)}`, 'error');
+                } finally {
+                    return;
+                }
+
+            }
 
             //if attributeInstance passed 
             if (attributeInstance) {

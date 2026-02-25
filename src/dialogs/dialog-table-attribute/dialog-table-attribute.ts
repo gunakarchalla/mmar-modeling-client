@@ -7,17 +7,7 @@ import { bindable } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
 import { MdcDialog } from "@aurelia-mdc-web/dialog";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
-import { UrdfPoseService } from "resources/hybridAlgorithms/urdf_pose_service";
-import { EventAggregator } from "aurelia";
-import { ZipEntry } from "resources/hybridAlgorithms/roboticsystem_algorithms";
-
-export type tableAtrributeUpdatePayload = {
-    attributeInstance: AttributeInstance;
-    currentClassInstance: ClassInstance;
-    currentPortInstance: PortInstance;
-    currentClass: Class;
-    currentAttribute: Attribute;
-};
+import { InstanceUtility } from "resources/services/instance_utility";
 
 export class DialogTableAttribute {
 
@@ -53,8 +43,7 @@ export class DialogTableAttribute {
         private instanceCreationHandler: InstanceCreationHandler,
         private vizrepUpdateChecker: VizrepUpdateChecker,
         private hybridAlgorithmsService: HybridAlgorithmsService,
-        private urdfPoseService: UrdfPoseService,
-        private eventAggregator: EventAggregator,
+        private instanceUtility: InstanceUtility,
     ) {
 
     }
@@ -241,34 +230,19 @@ export class DialogTableAttribute {
         //update attribute value
         attributeInstance.value = attributeInstance.value.toString();
 
-        this.eventAggregator.publish('tableAttributeChanged', { attributeInstance: attributeInstance, currentAttribute: this.currentAttribute, currentClassInstance: this.currentClassInstance, currentClass: this.currentClass, currentPortInstance: this.currentPortInstance } as tableAtrributeUpdatePayload);
-
-        // URDF kinematics update hook:
-        // If the user edits a Joint's Origin table (Roll/Pitch/Yaw/Position) we recompute the
-        // robot poses via `urdf-loader` and update all link/joint transforms in the scene.
-        //
-        // We intentionally keep this check very narrow (Joint + Origin only) to avoid any
-        // unintended behavior for non-URDF content.
-        // try {
-        //     const currentClassName = (this.currentClass?.name || '').toLowerCase();
-        //     const currentAttributeName = (this.currentAttribute?.name || '').toLowerCase();
-        //     const hasUrdfRef = !!(this.currentClassInstance && (this.currentClassInstance as any).urdfRef);
-
-        //     if (this.currentClassInstance && hasUrdfRef && currentClassName === 'joint' && currentAttributeName === 'origin') {
-        //         // `this.attributeInstance` is the parent (table) attribute instance (Origin).
-        //         // `attributeInstance` is the edited cell.
-        //         await this.urdfPoseService.tryUpdateRobotFromJointOriginEdit(this.currentClassInstance, this.attributeInstance);
-        //     }
-        // } catch (err) {
-        //     // Non-fatal: fall back to existing vizRep update path.
-        // }
-
+        // this.eventAggregator.publish('tableAttributeChanged', { attributeInstance: attributeInstance, currentAttribute: this.currentAttribute, currentClassInstance: this.currentClassInstance, currentClass: this.currentClass, currentPortInstance: this.currentPortInstance } as tableAtrributeUpdatePayload);
 
 
         await this.vizrepUpdateChecker.checkForVizRepUpdate(attributeInstance);
 
+        // if scenetype is robotic system, check if there are changes that require a hybrid algorithm to run
+        const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+        if (sceneInstance?.uuid_scene_type == "113c3133-bf77-493a-a36f-553e77832280") {
+            await this.hybridAlgorithmsService.checkHybridAlgorithms(attributeInstance, [this.currentClassInstance], null, this.currentClass, this.currentAttribute);
+        }
+
         //if this.currentClassInstance is set, we are in a classInstance
-        if (this.currentClassInstance) {
+        else if (this.currentClassInstance) {
             await this.hybridAlgorithmsService.checkHybridAlgorithms(null, [this.currentClassInstance]);
         }
         //if this.currentPortInstance is set, we are in a portInstance
