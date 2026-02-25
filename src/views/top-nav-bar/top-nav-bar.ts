@@ -1,6 +1,5 @@
 import { bindable, EventAggregator } from "aurelia";
 import { DialogHelper } from "resources/dialog_helper";
-import { InstanceUtility } from "resources/services/instance_utility";
 
 export class TopNavBar {
 
@@ -10,29 +9,13 @@ export class TopNavBar {
       //used directly in html
       private dialogHelper: DialogHelper,
       private eventAggregator: EventAggregator,
-      private instanceUtility: InstanceUtility
    ) { }
 
    attached() {
       this.eventAggregator.subscribe("ctrlPlusSPressed", async () => {
          this.dialogHelper.openDialog(this.dialogSaveAs, "openDialogSaveAs", {});
       });
-
-      // update state initially and when tabs change
-      this.updateUrdfMenuState();
-      this.eventAggregator.subscribe('tabChanged', async () => {
-         this.updateUrdfMenuState();
-      });
    }
-
-   // keep a reference to allow toggling disabled dynamically
-   private urdfMenuItem = {
-      label: "Upload URDF",
-      icon: "upload",
-      disabled: true,
-      dialogName: "dialogUploadUrdf",
-      eventPropagationName: "openDialogUploadUrdf"
-   };
 
    fileMenu = {
       name: "File",
@@ -57,13 +40,19 @@ export class TopNavBar {
             dialogName: "dialogImportModel",
             eventPropagationName: "openDialogImportModel"
          },
-         this.urdfMenuItem,
          {
             label: "Import Metamodel",
             icon: "upload",
             disabled: false,
             dialogName: "dialogImportMetamodel",
             eventPropagationName: "openDialogImportMetamodel"
+         },
+         {
+            label: "Map file to SceneInstance",
+            icon: "upload",
+            disabled: false,
+            dialogName: "dialogMapFromFile",
+            eventPropagationName: "openDialogMapFromFile"
          },
          {
             label: "Export Open Models",
@@ -189,19 +178,5 @@ export class TopNavBar {
             disabled: false
          }
       ]
-   }
-
-
-   // Enable/disable URDF upload based on current scene type
-   async updateUrdfMenuState() {
-      try {
-         const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
-         const targetSceneTypeUuid = "113c3133-bf77-493a-a36f-553e77832280";
-         const enabled = !!sceneInstance && sceneInstance.uuid_scene_type === targetSceneTypeUuid;
-         this.urdfMenuItem.disabled = !enabled;
-      } catch (e) {
-         // if anything goes wrong, keep it disabled
-         this.urdfMenuItem.disabled = true;
-      }
    }
 }

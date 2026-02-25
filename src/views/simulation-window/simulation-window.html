@@ -1,11 +1,11 @@
 <div style="height: 80%; overflow-y: auto;" class="hidescroll">
-    <h5>Simulation</h5>
+    <h5>Simulation Controls</h5>
 
     <div if.bind="loading">Loading…</div>
     <div if.bind="!loading && errorMessage">${errorMessage}</div>
 
     <div if.bind="!loading && !errorMessage && !isRoboticSystemSceneType">
-        <div>This simulation panel is only available for the Robotic System scene type.</div>
+        <div></div>
     </div>
 
     <div if.bind="!loading && !errorMessage && isRoboticSystemSceneType">

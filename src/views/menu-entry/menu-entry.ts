@@ -24,7 +24,7 @@ export class MenuEntry {
    @bindable menuEntry: object = {};
    @bindable dialogSaveAs = null;
    @bindable dialogImportModel = null;
-   @bindable dialogUploadUrdf = null;
+   @bindable dialogMapFromFile = null;
 
    constructor(
       private dialogHelper: DialogHelper,
