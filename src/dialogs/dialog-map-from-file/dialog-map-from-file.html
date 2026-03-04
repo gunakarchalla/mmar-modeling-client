@@ -1,0 +1,17 @@
+<mdc-dialog-title>
+  Map file to Scene Instance
+ </mdc-dialog-title>
+ <mdc-dialog-content>
+  <template if.bind="showUploader">
+    <div id="dragdropMapFromFile"></div>
+  </template>
+  <template if.bind="!showUploader">
+    <div >${statusMessage}</div>
+  </template>
+ </mdc-dialog-content>
+ <template if.bind="showUploader">
+  <mdc-dialog-actions>
+    <div class="div-max-width"></div>
+    <button mdc-button data-mdc-dialog-action="ok" click.trigger="upload()">Upload</button>
+  </mdc-dialog-actions>
+ </template>

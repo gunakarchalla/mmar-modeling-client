@@ -2,6 +2,7 @@ import { singleton } from 'aurelia';
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
@@ -161,7 +162,7 @@ export class GraphicContext {
 
     }
 
-    const box : THREE.Mesh = new THREE.Mesh(geometry, material);
+    const box: THREE.Mesh = new THREE.Mesh(geometry, material);
     box.position.x = x_rel ? x_rel : box.position.x;
     box.position.y = y_rel ? y_rel : box.position.y;
     box.position.z = z_rel ? z_rel : box.position.z;
@@ -199,7 +200,7 @@ export class GraphicContext {
       material.color.set('white');
     }
 
-    const plane : THREE.Mesh = new THREE.Mesh(geometry, material);
+    const plane: THREE.Mesh = new THREE.Mesh(geometry, material);
     //set position
     plane.position.x = x_rel ? x_rel : plane.position.x;
     plane.position.y = y_rel ? y_rel : plane.position.y;
@@ -239,7 +240,7 @@ export class GraphicContext {
       material.color.set('white');
     }
 
-    const sphere : THREE.Mesh = new THREE.Mesh(geometry, material);
+    const sphere: THREE.Mesh = new THREE.Mesh(geometry, material);
     //set position
     sphere.position.x = x_rel ? x_rel : sphere.position.x;
     sphere.position.y = y_rel ? y_rel : sphere.position.y;
@@ -251,14 +252,77 @@ export class GraphicContext {
     return sphere;
   }
 
+  //this creates a graphic cylinder
+  async graphic_cylinder(
+    radiusTop: number,
+    radiusBottom: number,
+    height: number,
+    radialSegments: number,
+    heightSegments: number,
+    color?: string,
+    map?: string,
+    x_rel?: number,
+    y_rel?: number,
+    z_rel?: number,
+    openEnded?: boolean,
+    thetaStart?: number,
+    thetaLength?: number
+  ) {
+
+    const geometry = new THREE.CylinderGeometry(
+      radiusTop,
+      radiusBottom,
+      height,
+      radialSegments,
+      heightSegments,
+      openEnded,
+      thetaStart,
+      thetaLength
+    );
+
+    const material = new THREE.MeshBasicMaterial();
+
+    if (color)
+      material.color.set(color);
+
+    if (map && map != undefined && map != '' && map != null && map != 'undefined') {
+      this.map = map;
+
+      // Create an image
+      const image = new Image();
+      // Create texture
+      const texture = new THREE.Texture(image);
+      // On image load, update texture
+      image.onload = () => { texture.needsUpdate = true };
+      // Set image source
+      image.src = map;
+
+      material.map = texture;
+      material.transparent = true;
+      material.color.set('white');
+    }
+
+    const cylinder: THREE.Mesh = new THREE.Mesh(geometry, material);
+
+    //set position
+    cylinder.position.x = x_rel ? x_rel : cylinder.position.x;
+    cylinder.position.y = y_rel ? y_rel : cylinder.position.y;
+    cylinder.position.z = z_rel ? z_rel : cylinder.position.z;
+
+    this.object3D[cylinder.uuid] = cylinder;
+
+    //return only used for relations
+    return cylinder;
+  }
+
   //load a predefined gltf to the object
   //!! this must load async in the vizRep
-  async graphic_gltf(objectString: string, x_rel?: number, y_rel?: number, z_rel?: number) {
+  async graphic_gltf(objectString: string | ArrayBuffer, x_rel?: number, y_rel?: number, z_rel?: number, scale?: number[]) {
 
+    const effectiveScale = scale && scale.length === 3 ? scale : [1, 1, 1];
     // return array
     const meshes : THREE.Mesh[] = [];
 
-    //we define the loader
     const loader = new GLTFLoader();
 
     //we parse the object string to three.js objects with the async parser
@@ -286,6 +350,7 @@ export class GraphicContext {
         mesh.position.x = x_rel ? mesh.position.x + x_rel : mesh.position.x;
         mesh.position.y = y_rel ? mesh.position.y + y_rel : mesh.position.y;
         mesh.position.z = z_rel ? mesh.position.z + z_rel : mesh.position.z;
+        mesh.scale.set(effectiveScale[0], effectiveScale[1], effectiveScale[2]);
 
         this.object3D[mesh.uuid] = mesh;
         meshes.push(mesh);
@@ -293,6 +358,27 @@ export class GraphicContext {
 
     });
     return meshes;
+  }
+
+  //load an STL mesh to the object
+  async graphic_stl(buffer: ArrayBuffer, scale?: number[], x_rel?: number, y_rel?: number, z_rel?: number, color?: string) {
+    const loader = new STLLoader();
+    const geometry = loader.parse(buffer);
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshPhongMaterial({ color: color || '#b0b0b0' });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    const effectiveScale = scale && scale.length === 3 ? scale : [1, 1, 1];
+    mesh.scale.set(effectiveScale[0], effectiveScale[1], effectiveScale[2]);
+
+    mesh.position.x = x_rel ? mesh.position.x + x_rel : mesh.position.x;
+    mesh.position.y = y_rel ? mesh.position.y + y_rel : mesh.position.y;
+    mesh.position.z = z_rel ? mesh.position.z + z_rel : mesh.position.z;
+
+    this.object3D[mesh.uuid] = mesh;
+
+    return [mesh];
   }
 
 
@@ -343,8 +429,8 @@ export class GraphicContext {
   }
 
   //this creates a 3D object that is a clickable button
-  async graphic_button(object : THREE.Mesh | THREE.Mesh[], expression?: string) {
-    
+  async graphic_button(object: THREE.Mesh | THREE.Mesh[], expression?: string) {
+
     //check if THREE.Mesh or THREE.Mesh[] is passed
     if (Array.isArray(object)) {
       for (const obj of object) {
@@ -584,7 +670,7 @@ export class GraphicContext {
     return mergedMesh;
   }
 
-  async drawButtons(toAttach : THREE.Mesh) {
+  async drawButtons(toAttach: THREE.Mesh) {
     //this are the objects that have been calculated from the metafunction
     const loadedObjects: THREE.Mesh[] = Object.values(this.button3D) as unknown as THREE.Mesh[];     // --> should be mesh
     for (const object of loadedObjects) {
@@ -595,7 +681,7 @@ export class GraphicContext {
     this.button3D = {};
   }
 
-  async removeButtons(parentMesh : THREE.Mesh) {
+  async removeButtons(parentMesh: THREE.Mesh) {
     // for each child of the parentMesh
     for (const child of parentMesh.children) {
       // if the child is a button
@@ -650,7 +736,7 @@ export class GraphicContext {
 
     await this.removeLabels(classObjectToUpdate);
     await this.removeButtons(classObjectToUpdate);
-   
+
     await this.drawButtons(classObjectToUpdate);
 
     await this.drawLabels(classObjectToUpdate);

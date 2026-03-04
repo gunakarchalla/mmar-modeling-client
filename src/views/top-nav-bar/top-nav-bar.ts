@@ -8,7 +8,7 @@ export class TopNavBar {
    constructor(
       //used directly in html
       private dialogHelper: DialogHelper,
-      private eventAggregator: EventAggregator
+      private eventAggregator: EventAggregator,
    ) { }
 
    attached() {
@@ -46,6 +46,13 @@ export class TopNavBar {
             disabled: false,
             dialogName: "dialogImportMetamodel",
             eventPropagationName: "openDialogImportMetamodel"
+         },
+         {
+            label: "Map file to SceneInstance",
+            icon: "upload",
+            disabled: false,
+            dialogName: "dialogMapFromFile",
+            eventPropagationName: "openDialogMapFromFile"
          },
          {
             label: "Export Open Models",
@@ -172,6 +179,4 @@ export class TopNavBar {
          }
       ]
    }
-      
-
 }

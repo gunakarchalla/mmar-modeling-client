@@ -42,6 +42,8 @@ export class DialogReferenceAttribute {
     private allowedPortInstances: { portInstance: PortInstance, parentRole: Role }[] = [];
     private allowedSceneInstances: { sceneInstance: SceneInstance, parentRole: Role }[] = [];
 
+    private isLoading: boolean = false;
+
     constructor(
         private globalObjectInstance: GlobalDefinition,
         private metaUtility: MetaUtility,
@@ -49,7 +51,6 @@ export class DialogReferenceAttribute {
         private InstanceUtility: InstanceUtility,
         private logger: Logger,
         private statechangeAlgorithms: StatechangeAlgorithms,
-        private instanceUtility: InstanceUtility,
         private hybridAlgorithmsService: HybridAlgorithmsService,
         private eventAggregator: EventAggregator,
         private expressionUtility: ExpressionUtility
@@ -62,10 +63,12 @@ export class DialogReferenceAttribute {
     }
 
     async load(message) {
+        this.isLoading = true;
         await this.reset();
         this.attributeInstance = message.attributeInstance;
         await this.setMetaInformation();
         await this.setAllowedInstances();
+        this.isLoading = false;
     }
 
     //set meta information depending on current selected object (CalssInstance or PortInstance)
@@ -295,7 +298,7 @@ export class DialogReferenceAttribute {
 
     getClassInstanceName(classInstance: ClassInstance) {
         //anonymous async function
-        return classInstance.attribute_instance.find(attribute => attribute.uuid_attribute === 'd6632c72-89fa-4210-9d01-18e911505608').value;
+        return classInstance.attribute_instance.find(attribute => attribute.uuid_attribute === 'd6632c72-89fa-4210-9d01-18e911505608')?.value || 'Unknown';
     }
 
     //reset all variables for new load
@@ -318,6 +321,10 @@ export class DialogReferenceAttribute {
         this.relationclassInstances = [];
         this.portInstances = [];
 
+        this.selectedSceneInstanceObject = null;
+        this.selectedClassInstanceObject = null;
+        this.selectedRelationclassInstanceObject = null;
+        this.selectedPortInstanceObject = null;
 
         // attributes for allowed classInstances, relationclassInstances, portInstances, sceneInstances
         this.allowedClassInstances = [];

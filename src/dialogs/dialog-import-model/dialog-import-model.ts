@@ -32,7 +32,7 @@ export class DialogImportModel {
         this.uppy = new Uppy(
             {
                 restrictions: {
-                    allowedFileTypes: ['.json']
+                    allowedFileTypes: ['.json', '.zip']
                 }
             }
         );

@@ -1,0 +1,29 @@
+<div style="height: 80%; overflow-y: auto;" class="hidescroll">
+    <h5>Simulation Controls</h5>
+
+    <div if.bind="loading">Loading…</div>
+    <div if.bind="!loading && errorMessage">${errorMessage}</div>
+
+    <div if.bind="!loading && !errorMessage && !isRoboticSystemSceneType">
+        <div></div>
+    </div>
+
+    <div if.bind="!loading && !errorMessage && isRoboticSystemSceneType">
+        <div if.bind="!jointControls.length">No Joint instances found in the active scene.</div>
+
+        <div repeat.for="i of jointControls.length" style="margin: 12px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <div>${jointControls[i].displayName}</div>
+                <div>Value: ${jointControls[i].value}</div>
+            </div>
+
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div style="min-width: 72px;">Min: ${jointControls[i].lower}</div>
+
+                <input style="width: 100%;" type="range" min.bind="jointControls[i].lower" max.bind="jointControls[i].upper" value.bind="jointControls[i].value" step.bind="jointControls[i].step" class="slider" id="RangeSlider${i}" input.trigger="onJointValueChanged(jointControls[i])" change.trigger="onJointValueChanged(jointControls[i])">
+
+                <div style="min-width: 72px;">Max: ${jointControls[i].upper}</div>
+            </div>
+        </div>
+    </div>
+</div>

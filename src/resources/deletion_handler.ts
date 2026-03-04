@@ -1,7 +1,7 @@
 import { InstanceUtility } from './services/instance_utility';
 import * as THREE from "three"
 import { GlobalStateObject } from './global_state_object';
-import { singleton } from 'aurelia';
+import { EventAggregator, singleton } from 'aurelia';
 import { GlobalDefinition } from './global_definitions';
 import { GraphicContext } from './graphic_context';
 import { ClassInstance, AttributeInstance, UUID, RelationclassInstance, PortInstance, RoleInstance } from "../../../mmar-global-data-structure";
@@ -22,7 +22,8 @@ export class DeletionHandler {
         private globalSelectedObject: GlobalSelectedObject,
         private instanceUtility: InstanceUtility,
         private logger: Logger,
-        private fetchHelper: FetchHelper
+        private fetchHelper: FetchHelper,
+        private eventAggregator: EventAggregator
     ) { }
 
     async onPressDelete() {
@@ -108,6 +109,15 @@ export class DeletionHandler {
             }
         }
         this.globalObjectInstance.doSceneInstancePatch = true;
+
+        // Notify listeners (e.g., SimulationWindow) that the active SceneInstance has changed.
+        // Consumers should debounce refreshes because cascaded deletions can trigger multiple mutations.
+        this.eventAggregator.publish('sceneInstanceMutated', {
+            sceneInstanceUuid: sceneInstance.uuid,
+            action: 'deleted',
+            kind: 'class',
+            instanceUuid: classInstance.uuid,
+        });
     }
 
     async deleteRelationclassInstance(_relationclassInstance: ClassInstance, index: number) {
@@ -189,6 +199,15 @@ export class DeletionHandler {
         }
         // !!! the api deletion strategy is not bullet proof. Thus, we patch the local sceneInstance again
         this.globalObjectInstance.doSceneInstancePatch = true;
+
+        // Notify listeners (e.g., SimulationWindow) that the active SceneInstance has changed.
+        // Consumers should debounce refreshes because cascaded deletions can trigger multiple mutations.
+        this.eventAggregator.publish('sceneInstanceMutated', {
+            sceneInstanceUuid: sceneInstance.uuid,
+            action: 'deleted',
+            kind: 'relation',
+            instanceUuid: relationclassInstance.uuid,
+        });
 
     }
 

@@ -3,10 +3,11 @@ import { InstanceCreationHandler } from "resources/instance_creation_handler";
 import { MetaUtility } from "resources/services/meta_utility";
 import { AttributeInstance, Attribute, AttributeType, UUID, Class, ClassInstance, PortInstance } from "../../../../mmar-global-data-structure";
 import { ColumnStructure } from "../../../../mmar-global-data-structure/models/meta/Metamodel_columns.structure";
-import { bindable, valueConverter } from "aurelia";
+import { bindable } from "aurelia";
 import { VizrepUpdateChecker } from "resources/services/vizrep_update_checker";
 import { MdcDialog } from "@aurelia-mdc-web/dialog";
 import { HybridAlgorithmsService } from "resources/services/hybrid_algorithms_service";
+import { InstanceUtility } from "resources/services/instance_utility";
 
 export class DialogTableAttribute {
 
@@ -42,6 +43,7 @@ export class DialogTableAttribute {
         private instanceCreationHandler: InstanceCreationHandler,
         private vizrepUpdateChecker: VizrepUpdateChecker,
         private hybridAlgorithmsService: HybridAlgorithmsService,
+        private instanceUtility: InstanceUtility,
     ) {
 
     }
@@ -228,10 +230,19 @@ export class DialogTableAttribute {
         //update attribute value
         attributeInstance.value = attributeInstance.value.toString();
 
+        // this.eventAggregator.publish('tableAttributeChanged', { attributeInstance: attributeInstance, currentAttribute: this.currentAttribute, currentClassInstance: this.currentClassInstance, currentClass: this.currentClass, currentPortInstance: this.currentPortInstance } as tableAtrributeUpdatePayload);
+
+
         await this.vizrepUpdateChecker.checkForVizRepUpdate(attributeInstance);
 
+        // if scenetype is robotic system, check if there are changes that require a hybrid algorithm to run
+        const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+        if (sceneInstance?.uuid_scene_type == "113c3133-bf77-493a-a36f-553e77832280") {
+            await this.hybridAlgorithmsService.checkHybridAlgorithms(attributeInstance, [this.currentClassInstance], null, this.currentClass, this.currentAttribute);
+        }
+
         //if this.currentClassInstance is set, we are in a classInstance
-        if (this.currentClassInstance) {
+        else if (this.currentClassInstance) {
             await this.hybridAlgorithmsService.checkHybridAlgorithms(null, [this.currentClassInstance]);
         }
         //if this.currentPortInstance is set, we are in a portInstance

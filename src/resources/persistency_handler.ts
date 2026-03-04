@@ -50,28 +50,52 @@ export class PersistencyHandler {
       } else {
         //point to insert object
         const point = new THREE.Vector3(class_instance.coordinates_2d.x, class_instance.coordinates_2d.y, class_instance.coordinates_2d.z);
-        //get parent metaClass of the instance from the metamodel
-        const meta_class: Class = await this.metaUtility.getMetaClass(class_instance.uuid_class);
-        //parse metafunction
-        const metaFunction = await this.metaUtility.parseMetaFunction(meta_class.geometry as unknown as string);
+        let classObject3D: THREE.Mesh | undefined;
 
-        //reset this.gc instance
-        this.gc.resetInstance();
+        // Prefer URDF-provided mesh if present; fall back to metamodel vizRep otherwise
+        const customVizRep = (class_instance as any).urdfVizRep as { format: string, data: string | ArrayBuffer, scale?: number[] } | undefined;
 
-        //set this.globalObjectInstance.current_class_instance (we need this in other functions)
-        this.globalObjectInstance.current_class_instance = class_instance;
-        this.gc.current_instance_object = class_instance;
+        if (customVizRep) {
+          await this.gc.resetInstance();
+          this.globalObjectInstance.current_class_instance = class_instance;
+          this.gc.current_instance_object = class_instance;
 
-        //we set the metafunction to the "geometry" property of the class_instance
-        //class_instance.geometry = metaFunction;
+          if (customVizRep.format === 'stl') {
+            await this.gc.graphic_stl(customVizRep.data as ArrayBuffer, customVizRep.scale);
+          } else {
+            await this.gc.graphic_gltf(customVizRep.data, 0, 0, 0, customVizRep.scale);
+          }
 
-        //we call the function that is stored in the metamodel
-        await this.gc.runVizRepFunction(metaFunction);
-        // we call the function for drawing the information in the gc
-        let classObject3D = await this.gc.drawVizRep(point, class_instance);
-        this.globalObjectInstance.render = true;
+          // we call the function for drawing the information in the gc
+          classObject3D = await this.gc.drawVizRep(point, class_instance);
+          this.globalObjectInstance.render = true;
+          await this.gc.resetInstance();
+        }
 
-        this.gc.resetInstance();
+        if (!classObject3D) {
+          //get parent metaClass of the instance from the metamodel
+          const meta_class: Class = await this.metaUtility.getMetaClass(class_instance.uuid_class);
+          //parse metafunction
+          const metaFunction = await this.metaUtility.parseMetaFunction(meta_class.geometry as unknown as string);
+
+          //reset this.gc instance
+          this.gc.resetInstance();
+          //set this.globalObjectInstance.current_class_instance (we need this in other functions)
+
+          this.globalObjectInstance.current_class_instance = class_instance;
+          this.gc.current_instance_object = class_instance;
+
+          //we set the metafunction to the "geometry" property of the class_instance
+          //class_instance.geometry = metaFunction;
+          await this.gc.runVizRepFunction(metaFunction);
+          classObject3D = await this.gc.drawVizRep(point, class_instance);
+          this.globalObjectInstance.render = true;
+          this.gc.resetInstance();
+        }
+
+        if (!classObject3D) {
+          continue;
+        }
 
         //------------------------------------
         //for each port_instance of the class_instance we create a port_object
