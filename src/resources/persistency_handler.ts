@@ -268,6 +268,10 @@ export class PersistencyHandler {
   async persistSceneInstanceToDB() {
     //get sceneInstance from TabContext
     const sceneInstance = await this.instanceUtility.getTabContextSceneInstance();
+    if (!sceneInstance) {
+      this.logger.log('No active scene instance found to persist.', 'error');
+      return;
+    }
 
     //this calls the endpoint for posting a sceneInstance to the db
     //check first if post or patch
@@ -276,28 +280,33 @@ export class PersistencyHandler {
     //get SceneType of the sceneInstance
     const sceneType = await this.metaUtility.getTabContextSceneType();
     if (sceneType) {
-
-      // try to patch the sceneInstance
-
       try {
-        this.fetchHelper.sceneInstancesPATCH(sceneInstance.uuid, sceneInstance)
-          .then((response) => {
-            this.logger.log('SceneInstance patched', 'info');
-          })
-          .catch((patchError) => {
-            this.logger.log(`SceneInstance patch failed: ${patchError?.message || JSON.stringify(patchError)}`, 'error');
-            this.logger.log('Trying to post instead', 'info');
-
-            this.fetchHelper.sceneInstancesPOST(sceneType.uuid, sceneInstance)
-              .then((response) => {
-                this.logger.log('SceneInstance posted', 'info');
-              })
-              .catch((postError) => {
-                this.logger.log(`SceneInstance post failed: ${postError?.message || JSON.stringify(postError)}`, 'error');
-              });
-          });
+        await this.fetchHelper.sceneInstancesPATCH(sceneInstance.uuid, sceneInstance);
+        this.logger.log('SceneInstance patched', 'info');
       } catch (error) {
-        this.logger.log(`Error in persistSceneInstanceToDB: ${error?.message || JSON.stringify(error)}`, 'error');
+        const patchError = error as any;
+        const statusCode = Number(patchError?.status);
+        this.logger.log(`SceneInstance patch failed: ${patchError?.message || JSON.stringify(patchError)}`, 'error');
+
+        // Continue with POST only when PATCH failed with internal server error.
+        if (statusCode === 404) {
+          this.logger.log('PATCH failed with status 404. Scene instance not found. Trying to post instead.', 'info');
+          try {
+            await this.fetchHelper.sceneInstancesPOST(sceneType.uuid, sceneInstance);
+            this.logger.log('SceneInstance posted', 'info');
+          } catch (postError) {
+            const scenePostError = postError as any;
+            this.logger.log(`SceneInstance post failed: ${scenePostError?.message || JSON.stringify(scenePostError)}`, 'error');
+          }
+          return;
+        }
+
+        if (statusCode === 403) {
+          window.alert("You don't have enough authorization to edit this scene instance.");
+          return;
+        }
+
+        this.logger.log(`SceneInstance patch failed with status ${statusCode}. POST fallback skipped.`, 'error');
       }
     }
   }

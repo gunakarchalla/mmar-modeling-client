@@ -59,6 +59,9 @@ export class InstanceUtility {
     async createTabContextSceneInstance(sceneInstance: SceneInstance) {
 
         let sceneType = await this.metaUtility.getSceneTypeByUUID(sceneInstance.uuid_scene_type);
+        if (!sceneType) {
+            throw new Error(`Could not resolve scene type ${sceneInstance.uuid_scene_type} for scene instance ${sceneInstance.uuid}.`);
+        }
 
         let threeScene = this.globalObjectInstance.scene;
         threeScene.uuid = sceneInstance.uuid;

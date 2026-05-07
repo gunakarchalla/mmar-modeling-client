@@ -40,7 +40,17 @@ export class RelationclassButtongroup {
 
     async setIcons() {
         //call getImage on all Classes of globalObjectInstance.tabContext[globalObjectInstance.selectedTab].sceneType.classes
-        const relationclasses = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab].sceneType.relationclasses;
+        const selectedTab = this.globalObjectInstance.selectedTab;
+        if (selectedTab < 0) {
+            return;
+        }
+
+        const tabContext = this.globalObjectInstance.tabContext[selectedTab];
+        const relationclasses = tabContext?.sceneType?.relationclasses;
+        if (!relationclasses) {
+            return;
+        }
+
         for (const metaclass of relationclasses) {
             metaclass["icon"] = undefined;
             const icon = await this.getImage(metaclass);

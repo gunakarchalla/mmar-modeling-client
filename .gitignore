@@ -34,3 +34,7 @@ node_modules
 /dist
 /.nyc_output
 /coverage
+
+# Claude
+.claude
+CLAUDE.md

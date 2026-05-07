@@ -40,7 +40,17 @@ export class ClassButtongroup {
 
     async setIcons() {
         //call getImage on all Classes of globalObjectInstance.tabContext[globalObjectInstance.selectedTab].sceneType.classes
-        const classes = this.globalObjectInstance.tabContext[this.globalObjectInstance.selectedTab].sceneType.classes;
+        const selectedTab = this.globalObjectInstance.selectedTab;
+        if (selectedTab < 0) {
+            return;
+        }
+
+        const tabContext = this.globalObjectInstance.tabContext[selectedTab];
+        const classes = tabContext?.sceneType?.classes;
+        if (!classes) {
+            return;
+        }
+
         for (const metaclass of classes) {
             metaclass["icon"] = undefined;
             const icon = await this.getImage(metaclass);

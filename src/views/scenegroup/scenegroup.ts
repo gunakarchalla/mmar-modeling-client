@@ -2,6 +2,7 @@ import { HybridAlgorithmsService } from './../../resources/services/hybrid_algor
 import { MetaUtility } from './../../resources/services/meta_utility';
 import { InstanceUtility } from 'resources/services/instance_utility';
 import { PersistencyHandler } from 'resources/persistency_handler';
+import { SceneOpenSnapshotService } from 'resources/services/scene_open_snapshot_service';
 
 import { SceneType, SceneInstance } from '../../../../mmar-global-data-structure';
 import { MdcTreeView } from '@aurelia-mdc-web/tree-view';
@@ -28,7 +29,6 @@ export class Scenegroup {
     @bindable dialogCreateNewScene = null;
     @bindable dialogLoadingWindow = null;
 
-
     constructor(
         private fetchHelper: FetchHelper,
         private globalObjectInstance: GlobalDefinition,
@@ -41,7 +41,8 @@ export class Scenegroup {
         private metaUtility: MetaUtility,
         private logger: Logger,
         private hybridAlgorithmsService: HybridAlgorithmsService,
-        private dialogHelper: DialogHelper
+        private dialogHelper: DialogHelper,
+        private sceneOpenSnapshotService: SceneOpenSnapshotService
     ) {
         // subscribe to updateSceneGroup event that is emitted, e.g. when a new scdneType or SceneInstance file is imported
         this.eventAggregator.subscribe('updateSceneGroup', this.updateTree.bind(this));
@@ -209,13 +210,34 @@ export class Scenegroup {
         }
     }
 
+    // Function to open a scene instance with a rollback mechanism in case of an error during opening the new scene. This is useful when the user has access to the sceneinstance but not to the comprehensive scene type.
+    private async openSceneWithRollback() {
+        const openingSceneInstance = this.instanceUtility.checkIfSceneInstance(this.treeView.selectedNode);
+
+        if (openingSceneInstance) {
+            this.sceneOpenSnapshotService.createSnapshot();
+        }
+
+        try {
+            await this.openScene();
+            this.sceneOpenSnapshotService.clearSnapshot();
+        } catch (error) {
+            this.sceneOpenSnapshotService.rollback();
+            throw error;
+        }
+    }
+
     // check for double click to open scene
     async clickChecker() {
         await this.createHelperText();
         this.clickCounter++;
         if (this.clickCounter === 2) {
             this.clickCounter = 0;
-            this.openScene();
+            try {
+                await this.openSceneWithRollback();
+            } catch (error) {
+                window.alert("You don't have enough authorization to read comprehensive elements of this scene type.");
+            }
         }
         setTimeout(() => {
             this.clickCounter = 0;
