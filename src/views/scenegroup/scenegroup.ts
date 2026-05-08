@@ -2,7 +2,7 @@ import { HybridAlgorithmsService } from './../../resources/services/hybrid_algor
 import { MetaUtility } from './../../resources/services/meta_utility';
 import { InstanceUtility } from 'resources/services/instance_utility';
 import { PersistencyHandler } from 'resources/persistency_handler';
-import { SceneOpenSnapshotService } from 'resources/services/scene_open_snapshot_service';
+import { SnapshotService } from 'resources/services/snapshot_service';
 
 import { SceneType, SceneInstance } from '../../../../mmar-global-data-structure';
 import { MdcTreeView } from '@aurelia-mdc-web/tree-view';
@@ -42,7 +42,7 @@ export class Scenegroup {
         private logger: Logger,
         private hybridAlgorithmsService: HybridAlgorithmsService,
         private dialogHelper: DialogHelper,
-        private sceneOpenSnapshotService: SceneOpenSnapshotService
+        private snapshotService: SnapshotService
     ) {
         // subscribe to updateSceneGroup event that is emitted, e.g. when a new scdneType or SceneInstance file is imported
         this.eventAggregator.subscribe('updateSceneGroup', this.updateTree.bind(this));
@@ -98,6 +98,7 @@ export class Scenegroup {
                     for (const sceneInstance of data) {
                         // push the sceneInstance to the sceneInstances array
                         this.sceneInstances.push(sceneInstance);
+                        this.snapshotService.setSceneInstanceSnapshot(sceneInstance);
                         // get the index of the sceneType in the tree
                         const index = this.tree.findIndex((item) => item.uuid === sceneType.uuid);
                         // if the sceneType does not have any children
@@ -215,14 +216,14 @@ export class Scenegroup {
         const openingSceneInstance = this.instanceUtility.checkIfSceneInstance(this.treeView.selectedNode);
 
         if (openingSceneInstance) {
-            this.sceneOpenSnapshotService.createSnapshot();
+            this.snapshotService.createSceneOpenSnapshot();
         }
 
         try {
             await this.openScene();
-            this.sceneOpenSnapshotService.clearSnapshot();
+            this.snapshotService.clearSceneOpenSnapshot();
         } catch (error) {
-            this.sceneOpenSnapshotService.rollback();
+            this.snapshotService.rollbackSceneOpen();
             throw error;
         }
     }

@@ -1,4 +1,5 @@
 import { FetchHelper } from './services/fetchHelper';
+import { SnapshotService } from './services/snapshot_service';
 import { singleton } from 'aurelia';
 import { plainToInstance } from "class-transformer";
 import * as THREE from "three";
@@ -25,7 +26,8 @@ export class PersistencyHandler {
     private instanceUtility: InstanceUtility,
     private fetchHelper: FetchHelper,
     private logger: Logger,
-    private expression: ExpressionUtility
+    private expression: ExpressionUtility,
+    private snapshotService: SnapshotService
   ) { }
 
   async checkIfClassinstanceInScene() {
@@ -282,6 +284,7 @@ export class PersistencyHandler {
     if (sceneType) {
       try {
         await this.fetchHelper.sceneInstancesPATCH(sceneInstance.uuid, sceneInstance);
+        this.snapshotService.setSceneInstanceSnapshot(sceneInstance);
         this.logger.log('SceneInstance patched', 'info');
       } catch (error) {
         const patchError = error as any;
@@ -293,6 +296,7 @@ export class PersistencyHandler {
           this.logger.log('PATCH failed with status 404. Scene instance not found. Trying to post instead.', 'info');
           try {
             await this.fetchHelper.sceneInstancesPOST(sceneType.uuid, sceneInstance);
+            this.snapshotService.setSceneInstanceSnapshot(sceneInstance);
             this.logger.log('SceneInstance posted', 'info');
           } catch (postError) {
             const scenePostError = postError as any;
@@ -303,6 +307,8 @@ export class PersistencyHandler {
 
         if (statusCode === 403) {
           window.alert("You don't have enough authorization to edit this scene instance.");
+          this.snapshotService.restoreSceneInstanceToCurrentTab();
+          await this.importInstances();
           return;
         }
 
