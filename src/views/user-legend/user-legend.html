@@ -1,0 +1,11 @@
+<template>
+  <div class="user-legend" if.bind="isVisible">
+    <span
+      repeat.for="u of users"
+      class="user-chip ${u.isLocal ? 'user-chip--local' : ''}"
+      style="background-color: ${u.color};"
+      mdc-tooltip="${u.username}${u.isLocal ? ' (you)' : ''}">
+      ${u.initials}
+    </span>
+  </div>
+</template>

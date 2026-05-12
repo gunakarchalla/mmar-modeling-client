@@ -1,8 +1,11 @@
 import { singleton } from 'aurelia';
 import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
+import { jwtDecode } from 'jwt-decode';
 import { SceneInstance } from '../../../../mmar-global-data-structure';
 import { GlobalDefinition } from '../global_definitions';
 import { sceneInstanceToYDoc, applyYDocChangeToSceneInstance } from './y_mapping';
+import { userColor, initials } from './color_util';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,11 +15,20 @@ export type AccessLevel = 'read' | 'edit' | 'delete';
 
 export interface SharedSession {
     ydoc: Y.Doc;
+    provider: WebsocketProvider;
+    /** Shorthand for provider.awareness */
+    awareness: WebsocketProvider['awareness'];
     sceneInstanceUuid: string;
     applyingRemote: boolean;
     /** Sentinel object used to tag locally-originated Y.Doc transactions. */
     localOrigin: object;
     access: AccessLevel;
+}
+
+interface JwtPayload {
+    uuid: string;
+    username: string;
+    exp?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +50,8 @@ export class SharedDocService {
 
     /**
      * Create (or replace) a shared session for the given tab. Populates the
-     * Y.Doc from the already-loaded SceneInstance and installs deep observers.
+     * Y.Doc from the already-loaded SceneInstance, connects to the sync server,
+     * and installs deep observers.
      */
     attach(tabIndex: number, sceneInstance: SceneInstance, access: AccessLevel = 'edit'): SharedSession {
         this.detach(tabIndex);
@@ -46,15 +59,35 @@ export class SharedDocService {
         const ydoc = new Y.Doc();
         const localOrigin: object = {};
 
+        // Populate the Y.Doc before connecting so the first client pushes its
+        // full state to the server's empty room document.
+        sceneInstanceToYDoc(sceneInstance, ydoc);
+
+        const syncUrl = (process.env as any).SYNC_URL || 'ws://localhost:8060';
+        const token = this.globalObjectInstance.accessToken;
+
+        const provider = new WebsocketProvider(
+            syncUrl,
+            sceneInstance.uuid,
+            ydoc,
+            { params: { token } }
+        );
+
+        const awareness = provider.awareness;
+
+        // Broadcast our own user state so other clients can show our chip/cursor.
+        this.setLocalUserState(awareness, access);
+
         const session: SharedSession = {
             ydoc,
+            provider,
+            awareness,
             sceneInstanceUuid: sceneInstance.uuid,
             applyingRemote: false,
             localOrigin,
             access,
         };
 
-        sceneInstanceToYDoc(sceneInstance, ydoc);
         this.installObservers(session, tabIndex);
 
         this.sessions.set(tabIndex, session);
@@ -65,6 +98,7 @@ export class SharedDocService {
     detach(tabIndex: number): void {
         const session = this.sessions.get(tabIndex);
         if (session) {
+            session.provider.destroy();
             session.ydoc.destroy();
             this.sessions.delete(tabIndex);
         }
@@ -78,6 +112,26 @@ export class SharedDocService {
     // -----------------------------------------------------------------------
     // Private helpers
     // -----------------------------------------------------------------------
+
+    private setLocalUserState(awareness: WebsocketProvider['awareness'], access: AccessLevel): void {
+        try {
+            const token = this.globalObjectInstance.accessToken;
+            if (!token) return;
+            const decoded = jwtDecode<JwtPayload>(token);
+            awareness.setLocalState({
+                user: {
+                    uuid: decoded.uuid,
+                    username: decoded.username,
+                    color: userColor(decoded.uuid),
+                    initials: initials(decoded.username),
+                },
+                access,
+                cursor: { active: false },
+            });
+        } catch {
+            // ignore decode errors (e.g. in test environments)
+        }
+    }
 
     private installObservers(session: SharedSession, tabIndex: number): void {
         const classInstancesMap = session.ydoc.getMap<Y.Map<unknown>>('class_instances');

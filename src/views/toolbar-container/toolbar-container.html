@@ -1,6 +1,7 @@
 <import from="./../camera-toggle/camera-toggle"></import>
 <import from="./../../dialogs/user-management/user-management"></import>
 <import from="./../auto-save/auto-save"></import>
+<import from="./../user-legend/user-legend"></import>
 
 <mdc-button if.bind="!globalObjectInstance.accessToken" outlined
     click.trigger="userManagement.open()">Login</mdc-button>
@@ -17,6 +18,7 @@
 </button>
 <a class="vl"></a>
 <auto-save></auto-save>
+<user-legend></user-legend>
 <a class="vl"></a>
 <button mdc-button disabled mdc-tooltip="undo" click.trigger="undo()">
     <mdc-icon>undo</mdc-icon>

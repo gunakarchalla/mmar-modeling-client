@@ -15,6 +15,7 @@ import { EventAggregator, bindable } from 'aurelia';
 import { Logger } from 'resources/services/logger';
 import { DialogHelper } from 'resources/dialog_helper';
 import { SharedDocService, AccessLevel } from '../../resources/collaboration/shared_doc_service';
+import { RemoteCursorRenderer } from '../../resources/collaboration/remote_cursor_renderer';
 
 export class Scenegroup {
     private treeView: MdcTreeView;
@@ -45,7 +46,8 @@ export class Scenegroup {
         private hybridAlgorithmsService: HybridAlgorithmsService,
         private dialogHelper: DialogHelper,
         private snapshotService: SnapshotService,
-        private sharedDocService: SharedDocService
+        private sharedDocService: SharedDocService,
+        private remoteCursorRenderer: RemoteCursorRenderer,
     ) {
         // subscribe to updateSceneGroup event that is emitted, e.g. when a new scdneType or SceneInstance file is imported
         this.eventAggregator.subscribe('updateSceneGroup', this.updateTree.bind(this));
@@ -237,6 +239,7 @@ export class Scenegroup {
 
             const tabIndex = this.globalObjectInstance.tabContext.length - 1;
             this.sharedDocService.attach(tabIndex, sceneInstance, access);
+            this.remoteCursorRenderer.bindToSession(tabIndex);
             tabContext.isShared = true;
             this.logger.log(`Shared session attached for scene ${sceneInstance.uuid} (access: ${access})`, 'info');
         } catch (err) {
