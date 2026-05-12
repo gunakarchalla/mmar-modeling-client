@@ -1,0 +1,63 @@
+<mdc-dialog-title>
+    Share Scene Instance
+</mdc-dialog-title>
+<mdc-dialog-content>
+
+    <br>
+    <mdc-select label="Select Scene Instance" required style="display: flex;"
+        change.trigger="onSceneInstanceChange($event)">
+        <mdc-list>
+            <div repeat.for="sceneType of tree">
+                <mdc-list-item repeat.for="si of sceneType.children" value.bind="si">${si.name} | ${si.uuid}</mdc-list-item>
+            </div>
+        </mdc-list>
+    </mdc-select>
+
+    <br>
+
+    <div if.bind="selectedSceneInstance">
+
+        <div if.bind="loading" style="color: grey; font-size: 12px;">Loading access list…</div>
+
+        <div if.bind="!loading">
+            <p style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">Users with access:</p>
+            <div if.bind="existingAccess.length === 0" style="color: grey; font-size: 12px; margin-bottom: 8px;">
+                No access entries found or you don't have permission to view them.
+            </div>
+            <div repeat.for="a of existingAccess" class="user-row">
+                <span class="user-name">${a.username}</span>
+                <span if.bind="a.displayname && a.displayname !== a.username" class="user-display"> (${a.displayname})</span>
+                <span class="access-pill access-pill--${levelLabel(a)}">${levelLabel(a)}</span>
+                <button mdc-button if.bind="canManage && a.uuid_user !== currentUserUuid"
+                    click.trigger="removeAccess(a)" style="min-width: 0; padding: 0 4px; color: #c00;">
+                    <mdc-icon>delete</mdc-icon>
+                </button>
+            </div>
+        </div>
+
+        <template if.bind="canManage && !loading">
+            <hr style="margin: 12px 0;">
+            <p style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">Add user:</p>
+            <mdc-text-field outlined label="Username" value.bind="usernameInput" style="display: flex; margin-bottom: 8px;"></mdc-text-field>
+            <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                <mdc-select label="Access level" value.bind="levelChoice" style="flex: 1;">
+                    <mdc-list>
+                        <mdc-list-item value="read">Read</mdc-list-item>
+                        <mdc-list-item value="edit">Edit</mdc-list-item>
+                        <mdc-list-item value="delete">Delete</mdc-list-item>
+                    </mdc-list>
+                </mdc-select>
+            </div>
+            <div if.bind="errorMsg" class="share-error">${errorMsg}</div>
+        </template>
+
+        <div if.bind="!canManage && errorMsg" class="share-error">${errorMsg}</div>
+
+    </div>
+
+</mdc-dialog-content>
+<mdc-dialog-actions style="position: absolute; bottom: 10px;">
+    <button mdc-button data-mdc-dialog-action="cancel" click.trigger="cancel()">Cancel</button>
+    <button mdc-button raised if.bind="canManage && selectedSceneInstance && !loading"
+        click.trigger="add()">Add user</button>
+</mdc-dialog-actions>

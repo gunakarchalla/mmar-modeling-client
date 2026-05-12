@@ -29,6 +29,7 @@ export class Scenegroup {
     @bindable openSceneGroup = false;
     @bindable dialogCreateNewScene = null;
     @bindable dialogLoadingWindow = null;
+    @bindable dialogShareSceneInstance = null;
 
     constructor(
         private fetchHelper: FetchHelper,

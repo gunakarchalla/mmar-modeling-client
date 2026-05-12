@@ -1,0 +1,52 @@
+.user-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.user-name {
+    font-weight: 500;
+    flex: 1;
+    min-width: 80px;
+}
+
+.user-display {
+    color: #666;
+    font-size: 11px;
+}
+
+.access-pill {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: #e0e0e0;
+    color: #333;
+}
+
+.access-pill--read {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.access-pill--edit {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.access-pill--delete {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.share-error {
+    color: #c00;
+    font-size: 12px;
+    margin-top: 4px;
+}

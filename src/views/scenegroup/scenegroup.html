@@ -2,6 +2,7 @@
 <import from="../../dialogs/dialog-copy-scene/dialog-copy-scene"></import>
 <import from="../../dialogs/dialog-loading-window/dialog-loading-window"></import>
 <import from="../../dialogs/dialog-delete-scene/dialog-delete-scene"></import>
+<import from="../../dialogs/share-scene-instance/share-scene-instance"></import>
 
 <div class="fixed-top">
   <div style="display: flex; flex-wrap: wrap; gap: 3px;">
@@ -14,6 +15,9 @@
       <mdc-button mdc-button outlined
       style="flex: 1; font-size: 10px; text-align: center; min-width: 100px; box-sizing: border-box;"
       click.trigger="dialogDeleteScene.open()">Delete SceneInstance</mdc-button>
+      <mdc-button mdc-button outlined
+      style="flex: 1; font-size: 10px; text-align: center; min-width: 100px; box-sizing: border-box;"
+      click.trigger="dialogShareSceneInstance.open()">Share SceneInstance</mdc-button>
   </div>
 </div>
 
@@ -45,4 +49,8 @@
 
 <mdc-dialog view-model.ref="dialogLoadingWindow" class="mdc-dialog--fullscreen mdc-dialog--fullheight">
   <dialog-loading-window style="min-height: 80vh;" tree.bind="tree"></dialog-loading-window>
+</mdc-dialog>
+
+<mdc-dialog view-model.ref="dialogShareSceneInstance" class="mdc-dialog--fullscreen mdc-dialog--fullheight">
+  <share-scene-instance style="min-height: 80vh;" tree.bind="tree"></share-scene-instance>
 </mdc-dialog>
