@@ -58,7 +58,8 @@
                 label.bind="enhancedAttributeInstance.attributeInstance.name"
                 type.bind="enhancedAttributeInstance.uiType"
                 value.bind="enhancedAttributeInstance.attributeInstance.value"
-                change.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)" rows="1"></mdc-text-field>
+                change.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)" rows="1"
+                disabled.bind="isReadOnly"></mdc-text-field>
             <mdc-text-field-helper-line>
                 <mdc-text-field-helper-text persistent>${enhancedAttributeInstance.uiType}</mdc-text-field-helper-text>
             </mdc-text-field-helper-line>
@@ -68,14 +69,14 @@
         <div if.bind="attributeInstancesUuidsOfFileType.includes(enhancedAttributeInstance.attributeInstance.uuid)">
             <!-- check if the attribute instance value is equal to default value and show appropriate text on the button-->
             <mdc-button outlined click.trigger="dialogUploadFile.open()"
-                style="width: 100%;">${!isUUID(enhancedAttributeInstance.attributeInstance.value)
+                style="width: 100%;" disabled.bind="isReadOnly">${!isUUID(enhancedAttributeInstance.attributeInstance.value)
                 ? 'Upload File' : 'Replace File'}</mdc-button>
             <mdc-dialog view-model.ref="dialogUploadFile">
                 <dialog-upload-file
                     attribute-instance.bind="enhancedAttributeInstance.attributeInstance"></dialog-upload-file>
             </mdc-dialog>
             <mdc-button outlined click.trigger="deleteFile(enhancedAttributeInstance.attributeInstance)"
-                style="width: 100%;" show.bind="isUUID(enhancedAttributeInstance.attributeInstance.value)">
+                style="width: 100%;" show.bind="isUUID(enhancedAttributeInstance.attributeInstance.value)" disabled.bind="isReadOnly">
                 Delete File
             </mdc-button>
             <mdc-button outlined click.trigger="downloadFile(enhancedAttributeInstance.attributeInstance)"
@@ -91,7 +92,7 @@
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
             <span style="white-space: nowrap; margin-left: 4px; width: 25px;">Val: ${enhancedAttributeInstance.attributeInstance.value | numerise:enhancedAttributeInstance.attributeInstance.metaAttribute.default_value:enhancedAttributeInstance.facets[0]}</span>
-            <mdc-slider style="flex: 1;" min.bind="enhancedAttributeInstance.facets[0]" max.bind="enhancedAttributeInstance.facets[1]" value.bind="enhancedAttributeInstance.attributeInstance.value | numerise:enhancedAttributeInstance.attributeInstance.metaAttribute.default_value:enhancedAttributeInstance.facets[0]" step.bind="enhancedAttributeInstance.facets[2] || 1" click.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)"></mdc-slider>
+            <mdc-slider style="flex: 1;" min.bind="enhancedAttributeInstance.facets[0]" max.bind="enhancedAttributeInstance.facets[1]" value.bind="enhancedAttributeInstance.attributeInstance.value | numerise:enhancedAttributeInstance.attributeInstance.metaAttribute.default_value:enhancedAttributeInstance.facets[0]" step.bind="enhancedAttributeInstance.facets[2] || 1" click.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)" disabled.bind="isReadOnly"></mdc-slider>
             </div>
         </div>
 
@@ -101,7 +102,7 @@
             <mdc-select label.bind="enhancedAttributeInstance.attributeInstance.name"
                 value.bind="enhancedAttributeInstance.attributeInstance.value"
                 change.trigger="fieldChange(enhancedAttributeInstance.attributeInstance)" required
-                style="display: flex;">
+                style="display: flex;" disabled.bind="isReadOnly">
                 <mdc-list>
                     <mdc-list-item repeat.for="facet of enhancedAttributeInstance.facets"
                         value.bind="facet">${facet}</mdc-list-item>
@@ -114,7 +115,7 @@
         <div
             if.bind="enhancedAttributeInstance.attributeInstance.uuid_attribute == 'b058b3b4-b523-4ffe-b08e-4f8dda2831c8'">
             <mdc-button outlined click.trigger="dialogUploadGltf.open()"
-                style="width: 100%;">${enhancedAttributeInstance.attributeInstance.value != '3D Object String' ?
+                style="width: 100%;" disabled.bind="isReadOnly">${enhancedAttributeInstance.attributeInstance.value != '3D Object String' ?
                 'Replace 3D Object' : 'Upload 3D Object'}</mdc-button>
             <mdc-dialog view-model.ref="dialogUploadGltf">
                 <dialog-upload-gltf first-level.bind="firstLevel"
@@ -126,7 +127,7 @@
         <div
             if.bind="enhancedAttributeInstance.attributeInstance.uuid_attribute == 'd334dd62-5651-4d0f-a7a0-13718f20da36'">
             <mdc-button outlined click.trigger="dialogUploadImage.open()"
-                style="width: 100%;">${enhancedAttributeInstance.attributeInstance.value != 'Image' ? 'Replace Image' :
+                style="width: 100%;" disabled.bind="isReadOnly">${enhancedAttributeInstance.attributeInstance.value != 'Image' ? 'Replace Image' :
                 'Upload Image'}</mdc-button>
             <mdc-dialog view-model.ref="dialogUploadImage">
                 <dialog-upload-image first-level.bind="firstLevel"

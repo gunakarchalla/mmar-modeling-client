@@ -11,6 +11,8 @@ import { GraphicContext } from 'resources/graphic_context';
 import { validate as uuidValidate } from 'uuid';
 import { FetchHelper } from 'resources/services/fetchHelper';
 import { FileUtility } from 'resources/services/file_utility';
+import { SharedDocService } from 'resources/collaboration/shared_doc_service';
+import { applyLocalChangeToYDoc } from 'resources/collaboration/y_mapping';
 
 export class AttributeWindow {
 
@@ -50,8 +52,13 @@ export class AttributeWindow {
     private vizrepUpdateChecker: VizrepUpdateChecker,
     private gc: GraphicContext,
     private fetchHelper: FetchHelper,
-    private fileUtility: FileUtility
+    private fileUtility: FileUtility,
+    private sharedDocService: SharedDocService
   ) {
+  }
+
+  get isReadOnly(): boolean {
+    return this.globalObjectInstance.currentTabAccess === 'read';
   }
 
   async attached() {
@@ -288,10 +295,14 @@ export class AttributeWindow {
 
 
   async fieldChange(attributeInstance: AttributeInstance) {
+    const session = this.sharedDocService.forTab(this.globalObjectInstance.selectedTab);
+
+    // Block writes from read-only collaborators or while applying a remote Yjs change
+    if (session?.access === 'read') return;
+    if (session?.applyingRemote) return;
 
     //update attribute value
     attributeInstance.value = attributeInstance.value.toString();
-    //this.updateTextMesh(attributeInstance);
 
     await this.vizrepUpdateChecker.checkForVizRepUpdate(attributeInstance);
 
@@ -304,16 +315,24 @@ export class AttributeWindow {
       await this.hybridAlgorithmsService.checkHybridAlgorithms(null, null, [this.currentPortInstance]);
     }
 
-    //patch attribute instance
-    //---------------------------------
-    // !!! endpoints with instances/attributesInstances are not working
-    // instead set tha globalObjectInstance.doSceneInstancePatch to true
-    //---------------------------------
-    // await this.fetchHelper.attributeInstancesPATCH(attributeInstance.uuid, attributeInstance).then((response) => {
-    //   this.logger.log("PATCH attribute instance", response.uuid + " with value " + response.value);
-    // });
-
-    this.globalObjectInstance.doSceneInstancePatch = true;
+    if (session) {
+      // Shared mode: propagate attribute change through Yjs and mark local dirty flag
+      if (this.currentClassInstance) {
+        applyLocalChangeToYDoc(
+          session.ydoc,
+          {
+            type: 'attribute_value',
+            classInstanceUuid: this.currentClassInstance.uuid,
+            attributeUuid: attributeInstance.uuid,
+            value: attributeInstance.value
+          },
+          session.localOrigin
+        );
+      }
+      this.globalObjectInstance.doSceneInstancePatchLocal = true;
+    } else {
+      this.globalObjectInstance.doSceneInstancePatch = true;
+    }
 
     return Promise.resolve();
   }

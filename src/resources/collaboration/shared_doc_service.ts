@@ -28,6 +28,8 @@ export class SharedDocService {
     private sessions = new Map<number, SharedSession>();
 
     constructor(private globalObjectInstance: GlobalDefinition) {
+        // Back-reference avoids circular DI import
+        globalObjectInstance.sharedDocServiceRef = this;
         // Expose for console-driven smoke testing in development
         if (typeof window !== 'undefined') {
             (window as any).__sharedDocService = this;

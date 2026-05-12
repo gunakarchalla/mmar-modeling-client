@@ -62,6 +62,14 @@ export class GlobalDefinition {
   doSceneInstancePatch: boolean;
   /** Set only for local-origin mutations in a shared scene; remote Yjs updates must NOT set this. */
   doSceneInstancePatchLocal: boolean;
+  /** Back-reference to SharedDocService set on construction to avoid circular DI. */
+  sharedDocServiceRef: any;
+
+  /** Returns 'read' | 'edit' | 'delete' for the active tab's shared session, or null if not shared. */
+  get currentTabAccess(): string | null {
+    if (!this.sharedDocServiceRef) return null;
+    return (this.sharedDocServiceRef.forTab(this.selectedTab) as any)?.access ?? null;
+  }
 
   constructor() {
     
@@ -103,6 +111,7 @@ export class GlobalDefinition {
     this.autoSave = true;
     this.doSceneInstancePatch = false;
     this.doSceneInstancePatchLocal = false;
+    this.sharedDocServiceRef = null;
   }
   
       
