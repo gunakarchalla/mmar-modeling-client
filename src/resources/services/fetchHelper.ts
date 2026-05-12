@@ -7641,6 +7641,184 @@ export class FetchHelper implements ICustomElementViewModel {
         return Promise.resolve<ClassInstance[]>(null as any);
     }
 
+    // -----------------------------------------------------------------------
+    // Scene instance access management (Phase 1 – collaboration)
+    // -----------------------------------------------------------------------
+
+    /** GET /instances/sceneInstances/:uuid/access — list of users with access (delete-owner only). */
+    sceneAccessListGET(sceneInstanceUuid: string): Promise<AccessEntry[]> {
+        const url_ = `${this.baseUrl}/instances/sceneInstances/${encodeURIComponent(sceneInstanceUuid)}/access`;
+        const options_: RequestInit = {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'authorization': 'Bearer ' + this.globalObjectInstance.accessToken
+            }
+        };
+        this.logger.log('API call on ' + url_, 'api');
+        return this.http.fetch(url_, options_).then((response: Response) => {
+            const status = response.status;
+            const _headers: any = {};
+            if (response.headers && response.headers.forEach) {
+                response.headers.forEach((v: any, k: any) => { _headers[k] = v; });
+            }
+            if (status === 200) {
+                return response.text().then((_responseText) => {
+                    return (_responseText === '' ? [] : JSON.parse(_responseText)) as AccessEntry[];
+                });
+            }
+            return response.text().then((_responseText) => {
+                return throwException('An unexpected server error occurred.', status, _responseText, _headers);
+            });
+        });
+    }
+
+    /** GET /instances/sceneInstances/:uuid/access/me — caller's access level. */
+    sceneAccessMeGET(sceneInstanceUuid: string): Promise<{ level: 'read' | 'edit' | 'delete' | null }> {
+        const url_ = `${this.baseUrl}/instances/sceneInstances/${encodeURIComponent(sceneInstanceUuid)}/access/me`;
+        const options_: RequestInit = {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'authorization': 'Bearer ' + this.globalObjectInstance.accessToken
+            }
+        };
+        this.logger.log('API call on ' + url_, 'api');
+        return this.http.fetch(url_, options_).then((response: Response) => {
+            const status = response.status;
+            const _headers: any = {};
+            if (response.headers && response.headers.forEach) {
+                response.headers.forEach((v: any, k: any) => { _headers[k] = v; });
+            }
+            if (status === 200) {
+                return response.text().then((_responseText) => {
+                    return (_responseText === '' ? { level: null } : JSON.parse(_responseText)) as { level: 'read' | 'edit' | 'delete' | null };
+                });
+            }
+            return response.text().then((_responseText) => {
+                return throwException('An unexpected server error occurred.', status, _responseText, _headers);
+            });
+        });
+    }
+
+    /** POST /instances/sceneInstances/:uuid/access — grant access. */
+    sceneAccessPOST(sceneInstanceUuid: string, body: { uuid_user: string; access: string }): Promise<AccessEntry> {
+        const url_ = `${this.baseUrl}/instances/sceneInstances/${encodeURIComponent(sceneInstanceUuid)}/access`;
+        const options_: RequestInit = {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'authorization': 'Bearer ' + this.globalObjectInstance.accessToken
+            }
+        };
+        this.logger.log('API call on ' + url_, 'api');
+        return this.http.fetch(url_, options_).then((response: Response) => {
+            const status = response.status;
+            const _headers: any = {};
+            if (response.headers && response.headers.forEach) {
+                response.headers.forEach((v: any, k: any) => { _headers[k] = v; });
+            }
+            if (status === 200 || status === 201) {
+                return response.text().then(t => JSON.parse(t) as AccessEntry);
+            }
+            return response.text().then((_responseText) => {
+                return throwException('An unexpected server error occurred.', status, _responseText, _headers);
+            });
+        });
+    }
+
+    /** PATCH /instances/sceneInstances/:uuid/access/:userUuid — change access level. */
+    sceneAccessPATCH(sceneInstanceUuid: string, userUuid: string, body: { access: string }): Promise<AccessEntry> {
+        const url_ = `${this.baseUrl}/instances/sceneInstances/${encodeURIComponent(sceneInstanceUuid)}/access/${encodeURIComponent(userUuid)}`;
+        const options_: RequestInit = {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'authorization': 'Bearer ' + this.globalObjectInstance.accessToken
+            }
+        };
+        this.logger.log('API call on ' + url_, 'api');
+        return this.http.fetch(url_, options_).then((response: Response) => {
+            const status = response.status;
+            const _headers: any = {};
+            if (response.headers && response.headers.forEach) {
+                response.headers.forEach((v: any, k: any) => { _headers[k] = v; });
+            }
+            if (status === 200 || status === 201) {
+                return response.text().then(t => JSON.parse(t) as AccessEntry);
+            }
+            return response.text().then((_responseText) => {
+                return throwException('An unexpected server error occurred.', status, _responseText, _headers);
+            });
+        });
+    }
+
+    /** DELETE /instances/sceneInstances/:uuid/access/:userUuid — revoke access. */
+    sceneAccessDELETE(sceneInstanceUuid: string, userUuid: string): Promise<void> {
+        const url_ = `${this.baseUrl}/instances/sceneInstances/${encodeURIComponent(sceneInstanceUuid)}/access/${encodeURIComponent(userUuid)}`;
+        const options_: RequestInit = {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'authorization': 'Bearer ' + this.globalObjectInstance.accessToken
+            }
+        };
+        this.logger.log('API call on ' + url_, 'api');
+        return this.http.fetch(url_, options_).then((response: Response) => {
+            const status = response.status;
+            const _headers: any = {};
+            if (response.headers && response.headers.forEach) {
+                response.headers.forEach((v: any, k: any) => { _headers[k] = v; });
+            }
+            if (status === 200 || status === 204) {
+                return;
+            }
+            return response.text().then((_responseText) => {
+                return throwException('An unexpected server error occurred.', status, _responseText, _headers);
+            });
+        });
+    }
+
+    /** GET /users/byUsername/:username — look up a user by exact username. */
+    userByUsernameGET(username: string): Promise<{ uuid: string; username: string; displayname: string }> {
+        const url_ = `${this.baseUrl}/users/byUsername/${encodeURIComponent(username)}`;
+        const options_: RequestInit = {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'authorization': 'Bearer ' + this.globalObjectInstance.accessToken
+            }
+        };
+        this.logger.log('API call on ' + url_, 'api');
+        return this.http.fetch(url_, options_).then((response: Response) => {
+            const status = response.status;
+            const _headers: any = {};
+            if (response.headers && response.headers.forEach) {
+                response.headers.forEach((v: any, k: any) => { _headers[k] = v; });
+            }
+            if (status === 200) {
+                return response.text().then(t => JSON.parse(t) as { uuid: string; username: string; displayname: string });
+            }
+            return response.text().then((_responseText) => {
+                return throwException('An unexpected server error occurred.', status, _responseText, _headers);
+            });
+        });
+    }
+
+}
+
+/** Shape returned by GET /instances/sceneInstances/:uuid/access */
+export interface AccessEntry {
+    uuid_user: string;
+    username: string;
+    displayname: string;
+    read_access: boolean;
+    edit_access: boolean;
+    delete_access: boolean;
 }
 
 class ApiException extends Error {

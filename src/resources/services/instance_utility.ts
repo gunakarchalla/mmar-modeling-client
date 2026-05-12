@@ -71,7 +71,8 @@ export class InstanceUtility {
             sceneType: sceneType,
             sceneInstance: sceneInstance,
             threeScene: threeScene,
-            contextDragObjects: []
+            contextDragObjects: [],
+            isShared: false
         }
 
         this.globalObjectInstance.tabContext.push(newTabContext);

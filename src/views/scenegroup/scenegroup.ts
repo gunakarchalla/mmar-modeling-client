@@ -14,6 +14,7 @@ import { SceneInitiator } from 'resources/scene_initiator';
 import { EventAggregator, bindable } from 'aurelia';
 import { Logger } from 'resources/services/logger';
 import { DialogHelper } from 'resources/dialog_helper';
+import { SharedDocService, AccessLevel } from '../../resources/collaboration/shared_doc_service';
 
 export class Scenegroup {
     private treeView: MdcTreeView;
@@ -42,7 +43,8 @@ export class Scenegroup {
         private logger: Logger,
         private hybridAlgorithmsService: HybridAlgorithmsService,
         private dialogHelper: DialogHelper,
-        private snapshotService: SnapshotService
+        private snapshotService: SnapshotService,
+        private sharedDocService: SharedDocService
     ) {
         // subscribe to updateSceneGroup event that is emitted, e.g. when a new scdneType or SceneInstance file is imported
         this.eventAggregator.subscribe('updateSceneGroup', this.updateTree.bind(this));
@@ -199,7 +201,11 @@ export class Scenegroup {
         else if (this.instanceUtility.checkIfSceneInstance(this.treeView.selectedNode)) {
             const sceneInstance = this.treeView.selectedNode as SceneInstance;
             await this.sceneInitiator.sceneInit();
-            await this.instanceUtility.createTabContextSceneInstance(sceneInstance);
+            const tabContext = await this.instanceUtility.createTabContextSceneInstance(sceneInstance);
+
+            // Check whether this scene instance has ≥2 users with access → shared mode
+            await this.maybeAttachSharedSession(sceneInstance, tabContext);
+
             await this.persistencyHandler.loadPersistedModel(sceneInstance);
             // set globalClassObject classes
             this.globalClassObject.initClasses()
@@ -208,6 +214,33 @@ export class Scenegroup {
             //check hybrid algorithms -> specifically for reference attributes --> we do not give an attributeInstance as argument
             const classInstances = sceneInstance.class_instances;
             await this.hybridAlgorithmsService.checkHybridAlgorithms(null, classInstances);
+        }
+    }
+
+    private async maybeAttachSharedSession(
+        sceneInstance: SceneInstance,
+        tabContext: { isShared: boolean }
+    ): Promise<void> {
+        try {
+            const accessList = await this.fetchHelper.sceneAccessListGET(sceneInstance.uuid);
+            if (!accessList || accessList.length < 2) return;
+
+            // Determine caller's own access level
+            let access: AccessLevel = 'edit';
+            try {
+                const me = await this.fetchHelper.sceneAccessMeGET(sceneInstance.uuid);
+                if (me && me.level) access = me.level;
+            } catch {
+                // fallback: assume edit
+            }
+
+            const tabIndex = this.globalObjectInstance.tabContext.length - 1;
+            this.sharedDocService.attach(tabIndex, sceneInstance, access);
+            tabContext.isShared = true;
+            this.logger.log(`Shared session attached for scene ${sceneInstance.uuid} (access: ${access})`, 'info');
+        } catch (err) {
+            // Non-fatal: access check may fail for users without delete access
+            this.logger.log(`Access check skipped (${err}), treating scene as non-shared`, 'info');
         }
     }
 

@@ -10,6 +10,7 @@ type SceneOpenStateSnapshot = {
         sceneInstance: SceneInstance;
         threeScene: any;
         contextDragObjects: any[];
+        isShared: boolean;
     }[];
     scene: any;
     dragObjects: any[];

@@ -5,6 +5,8 @@ import { ObjectInstance } from "../../../../mmar-global-data-structure";
 import { MathUtility } from "./math_utility";
 import { Logger } from "./logger";
 import { GlobalDefinition } from "resources/global_definitions";
+import { SharedDocService } from "../collaboration/shared_doc_service";
+import { applyLocalChangeToYDoc } from "../collaboration/y_mapping";
 
 @singleton
 export class CoordinatesUpdater {
@@ -13,8 +15,8 @@ export class CoordinatesUpdater {
         private instanceUtility: InstanceUtility,
         private mathUtility: MathUtility,
         private logger: Logger,
-        private globalObjectInstance: GlobalDefinition
-
+        private globalObjectInstance: GlobalDefinition,
+        private sharedDocService: SharedDocService
     ) { }
 
     /**
@@ -42,6 +44,7 @@ export class CoordinatesUpdater {
                     object_instance.coordinates_2d.y = object3D.position.y;
                     object_instance.coordinates_2d.z = object3D.position.z;
                     this.logger.log("update coordinates in instance " + object_instance.name + " to " + object_instance.coordinates_2d.x + " " + object_instance.coordinates_2d.y + " " + object_instance.coordinates_2d.z, "done");
+                    this.syncCoordinatesToYDoc(object_instance.uuid, object_instance.coordinates_2d.x, object_instance.coordinates_2d.y, object_instance.coordinates_2d.z);
                 }
                 object_instance = null;
             }
@@ -60,11 +63,19 @@ export class CoordinatesUpdater {
                         child_object_instance.coordinates_2d.y = child_object3D.position.y;
                         child_object_instance.coordinates_2d.z = child_object3D.position.z;
                         this.logger.log("update coordinates in instance " + child_object_instance.name + " to " + child_object_instance.coordinates_2d.x + " " + child_object_instance.coordinates_2d.y + " " + child_object_instance.coordinates_2d.z, "done");
+                        this.syncCoordinatesToYDoc(child_object_instance.uuid, child_object_instance.coordinates_2d.x, child_object_instance.coordinates_2d.y, child_object_instance.coordinates_2d.z);
                     }
                     child_object_instance = null;
                 }
             }
         }
+    }
+
+    private syncCoordinatesToYDoc(uuid: string, x: number, y: number, z: number): void {
+        const session = this.sharedDocService.forTab(this.globalObjectInstance.selectedTab);
+        if (!session || session.applyingRemote) return;
+        applyLocalChangeToYDoc(session.ydoc, { type: 'coordinates', classInstanceUuid: uuid, x, y, z }, session.localOrigin);
+        this.globalObjectInstance.doSceneInstancePatchLocal = true;
     }
 
      /**

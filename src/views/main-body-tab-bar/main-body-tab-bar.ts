@@ -68,7 +68,7 @@ export class MainBodyTabBar {
 
   }
 
-  closeTab(tab: { sceneType: SceneType; sceneInstance: SceneInstance; threeScene: THREE.Scene; contextDragObjects: THREE.Mesh[]; }) {
+  closeTab(tab: { sceneType: SceneType; sceneInstance: SceneInstance; threeScene: THREE.Scene; contextDragObjects: THREE.Mesh[]; isShared: boolean; }) {
 
     // find index of tab
     const index = this.globalObjectInstance.tabContext.indexOf(tab);

@@ -14,6 +14,8 @@ export class GlobalDefinition {
     sceneInstance: SceneInstance;
     threeScene: THREE.Scene;
     contextDragObjects: THREE.Mesh[];
+    /** True when this tab is connected to the sync server for real-time collaboration. */
+    isShared: boolean;
   }[];
   transformControls: TransformControls;
   orbitControls: OrbitControls;
@@ -58,6 +60,8 @@ export class GlobalDefinition {
   localFiles: Map<string, string>;
   autoSave: boolean;
   doSceneInstancePatch: boolean;
+  /** Set only for local-origin mutations in a shared scene; remote Yjs updates must NOT set this. */
+  doSceneInstancePatchLocal: boolean;
 
   constructor() {
     
@@ -98,6 +102,7 @@ export class GlobalDefinition {
     this.localFiles = new Map<string, string>();
     this.autoSave = true;
     this.doSceneInstancePatch = false;
+    this.doSceneInstancePatchLocal = false;
   }
   
       
