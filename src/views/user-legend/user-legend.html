@@ -8,4 +8,8 @@
       ${u.initials}
     </span>
   </div>
+  <div class="sync-banner" if.bind="disconnectBanner">
+    <mdc-icon class="sync-banner__icon">sync_problem</mdc-icon>
+    <span class="sync-banner__text">${disconnectBanner}</span>
+  </div>
 </template>

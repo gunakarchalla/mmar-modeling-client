@@ -54,6 +54,31 @@ export class Scenegroup {
 
         this.eventAggregator.subscribe('initSceneGroup', this.whenLoggedIn.bind(this));
 
+        // Reconnected after a drop: reload the Three.js scene from the freshly
+        // fetched SceneInstance that SharedDocService put in the tab context.
+        this.eventAggregator.subscribe('sharedSceneReconnected', async (payload: { tabIndex: number }) => {
+            const tabCtx = this.globalObjectInstance.tabContext[payload.tabIndex];
+            if (!tabCtx?.sceneInstance) return;
+            this.logger.log(`Reloading scene after reconnect for tab ${payload.tabIndex}`, 'info');
+            await this.persistencyHandler.loadPersistedModel(tabCtx.sceneInstance);
+        });
+
+        // Access revoked while connected: show a modal and close the tab.
+        this.eventAggregator.subscribe('sceneAccessRevoked', (payload: { tabIndex: number }) => {
+            const tabCtx = this.globalObjectInstance.tabContext[payload.tabIndex];
+            const name = tabCtx?.sceneInstance?.name ?? 'this scene';
+            window.alert(`Your access to "${name}" was revoked. The tab will be closed.`);
+            // Remove the shared session (provider is already stopped by SharedDocService).
+            this.remoteCursorRenderer.clearForTab(payload.tabIndex);
+            // Remove the tab from the context.
+            if (payload.tabIndex >= 0 && payload.tabIndex < this.globalObjectInstance.tabContext.length) {
+                this.globalObjectInstance.tabContext.splice(payload.tabIndex, 1);
+                const newTab = Math.max(0, payload.tabIndex - 1);
+                this.globalObjectInstance.selectedTab =
+                    this.globalObjectInstance.tabContext.length > 0 ? newTab : -1;
+                this.eventAggregator.publish('tabChanged');
+            }
+        });
     }
 
     async attached() {

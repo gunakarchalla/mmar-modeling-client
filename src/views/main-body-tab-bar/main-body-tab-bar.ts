@@ -8,6 +8,8 @@ import { InstanceUtility } from 'resources/services/instance_utility';
 import { SceneType, SceneInstance } from '../../../../mmar-global-data-structure';
 import * as THREE from 'three';
 import { Logger } from 'resources/services/logger';
+import { SharedDocService } from 'resources/collaboration/shared_doc_service';
+import { RemoteCursorRenderer } from 'resources/collaboration/remote_cursor_renderer';
 
 export class MainBodyTabBar {
 
@@ -23,7 +25,9 @@ export class MainBodyTabBar {
     private sceneInitiator: SceneInitiator,
     private globalSelectedObject: GlobalSelectedObject,
     private logger: Logger,
-    private eventAggregator: EventAggregator
+    private eventAggregator: EventAggregator,
+    private sharedDocService: SharedDocService,
+    private remoteCursorRenderer: RemoteCursorRenderer,
   ) { }
 
 
@@ -72,7 +76,12 @@ export class MainBodyTabBar {
 
     // find index of tab
     const index = this.globalObjectInstance.tabContext.indexOf(tab);
-    
+
+    // Tear down any shared session before removing the tab so the websocket
+    // is closed gracefully and the user disappears from other clients' awareness.
+    this.remoteCursorRenderer.clearForTab(index);
+    this.sharedDocService.detach(index);
+
     if (index > 0 || (index == 0 && this.globalObjectInstance.tabContext.length > 1)) {
       // remove tab from tabContext
       this.globalObjectInstance.tabContext.splice(index, 1);

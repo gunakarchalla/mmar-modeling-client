@@ -24,3 +24,25 @@
   outline: 2px solid #fff;
   outline-offset: 1px;
 }
+
+.sync-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background-color: #b00020;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sync-banner__icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.sync-banner__text {
+  line-height: 1.2;
+}

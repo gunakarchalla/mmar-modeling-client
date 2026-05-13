@@ -18,7 +18,7 @@ export type LocalChangeType =
 // Populate Y.Doc from a freshly loaded SceneInstance
 // ---------------------------------------------------------------------------
 
-export function sceneInstanceToYDoc(sceneInstance: SceneInstance, ydoc: Y.Doc): void {
+export function sceneInstanceToYDoc(sceneInstance: SceneInstance, ydoc: Y.Doc, origin?: object): void {
     ydoc.transact(() => {
         // meta
         const meta = ydoc.getMap<string>('meta');
@@ -66,7 +66,7 @@ export function sceneInstanceToYDoc(sceneInstance: SceneInstance, ydoc: Y.Doc): 
         for (const pi of sceneInstance.port_instances ?? []) {
             portInstances.set(pi.uuid, JSON.stringify(pi));
         }
-    });
+    }, origin);
 }
 
 // ---------------------------------------------------------------------------

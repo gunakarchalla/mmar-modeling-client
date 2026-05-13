@@ -1,9 +1,10 @@
-import { singleton } from 'aurelia';
+import { EventAggregator, singleton } from 'aurelia';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { jwtDecode } from 'jwt-decode';
 import { SceneInstance } from '../../../../mmar-global-data-structure';
 import { GlobalDefinition } from '../global_definitions';
+import { FetchHelper } from '../services/fetchHelper';
 import { sceneInstanceToYDoc, applyYDocChangeToSceneInstance } from './y_mapping';
 import { userColor, initials } from './color_util';
 
@@ -12,6 +13,8 @@ import { userColor, initials } from './color_util';
 // ---------------------------------------------------------------------------
 
 export type AccessLevel = 'read' | 'edit' | 'delete';
+
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
 export interface SharedSession {
     ydoc: Y.Doc;
@@ -23,6 +26,9 @@ export interface SharedSession {
     /** Sentinel object used to tag locally-originated Y.Doc transactions. */
     localOrigin: object;
     access: AccessLevel;
+    connectionStatus: ConnectionStatus;
+    /** Human-readable banner shown while disconnected. Null when connected. */
+    disconnectBanner: string | null;
 }
 
 interface JwtPayload {
@@ -39,7 +45,11 @@ interface JwtPayload {
 export class SharedDocService {
     private sessions = new Map<number, SharedSession>();
 
-    constructor(private globalObjectInstance: GlobalDefinition) {
+    constructor(
+        private globalObjectInstance: GlobalDefinition,
+        private fetchHelper: FetchHelper,
+        private eventAggregator: EventAggregator,
+    ) {
         // Back-reference avoids circular DI import
         globalObjectInstance.sharedDocServiceRef = this;
         // Expose for console-driven smoke testing in development
@@ -61,7 +71,7 @@ export class SharedDocService {
 
         // Populate the Y.Doc before connecting so the first client pushes its
         // full state to the server's empty room document.
-        sceneInstanceToYDoc(sceneInstance, ydoc);
+        sceneInstanceToYDoc(sceneInstance, ydoc, localOrigin);
 
         const syncUrl = (process.env as any).SYNC_URL || 'ws://localhost:8060';
         const token = this.globalObjectInstance.accessToken;
@@ -86,9 +96,12 @@ export class SharedDocService {
             applyingRemote: false,
             localOrigin,
             access,
+            connectionStatus: 'connecting',
+            disconnectBanner: null,
         };
 
         this.installObservers(session, tabIndex);
+        this.installConnectionLifecycle(session, tabIndex);
 
         this.sessions.set(tabIndex, session);
         return session;
@@ -162,5 +175,111 @@ export class SharedDocService {
                 session.applyingRemote = false;
             }
         });
+    }
+
+    private installConnectionLifecycle(session: SharedSession, tabIndex: number): void {
+        let wasDisconnected = false;
+
+        // ---- Status changes ------------------------------------------------
+        session.provider.on('status', ({ status }: { status: string }) => {
+            if (status === 'connecting') {
+                session.connectionStatus = 'connecting';
+                // Banner is already set (either null on first connect, or from the
+                // disconnect event that preceded this retry).
+
+            } else if (status === 'disconnected') {
+                session.connectionStatus = 'disconnected';
+                wasDisconnected = true;
+                // Force read-only so edits are blocked while we're offline.
+                session.access = 'read';
+                session.disconnectBanner = 'Disconnected — reconnecting…';
+                this.setLocalUserState(session.awareness, 'read');
+
+            } else if (status === 'connected') {
+                session.connectionStatus = 'connected';
+                if (wasDisconnected) {
+                    wasDisconnected = false;
+                    // Reconnected after a drop: re-fetch authoritative state.
+                    this.onReconnect(tabIndex, session);
+                } else {
+                    // Initial connection — just clear any transitional banner.
+                    session.disconnectBanner = null;
+                }
+            }
+        });
+
+        // ---- WebSocket close codes -----------------------------------------
+        session.provider.on('connection-close', (event: CloseEvent) => {
+            const code = event?.code;
+
+            if (code === 4401) {
+                // Bad / expired JWT — stop retrying and redirect to login.
+                session.provider.disconnect();
+                session.disconnectBanner = 'Session expired. Please log in again.';
+                window.alert('Your session has expired. Please log in again.');
+                localStorage.removeItem('jwtToken');
+                location.reload();
+
+            } else if (code === 4403) {
+                // Access was revoked — stop retrying and force-close the tab.
+                session.provider.disconnect();
+                session.disconnectBanner = 'Your access to this scene was revoked.';
+                this.eventAggregator.publish('sceneAccessRevoked', { tabIndex });
+
+            } else if (code === 4500) {
+                // Sync server temporarily unavailable — provider will keep retrying.
+                session.connectionStatus = 'disconnected';
+                wasDisconnected = true;
+                session.access = 'read';
+                session.disconnectBanner =
+                    'Sync server unavailable — your changes won\'t be saved until reconnected.';
+                this.setLocalUserState(session.awareness, 'read');
+            }
+            // Codes 1000 (normal close) and others are handled by the status listener.
+        });
+    }
+
+    /** Called once on the first 'connected' event after a 'disconnected'. */
+    private async onReconnect(tabIndex: number, session: SharedSession): Promise<void> {
+        try {
+            // 1. Re-fetch authoritative scene state from REST.
+            const freshScene = await this.fetchHelper.sceneInstancesGET(session.sceneInstanceUuid);
+
+            // 2. Update the in-memory tab context so the rest of the app sees fresh data.
+            const tabCtx = this.globalObjectInstance.tabContext[tabIndex];
+            if (tabCtx && freshScene) {
+                tabCtx.sceneInstance = freshScene;
+            }
+
+            // 3. Re-populate the Y.Doc from the fresh REST snapshot.
+            //    Use localOrigin so our classInstances observer ignores these writes;
+            //    the scene is rebuilt below via the EventAggregator reload signal.
+            if (freshScene) {
+                sceneInstanceToYDoc(freshScene, session.ydoc, session.localOrigin);
+            }
+
+            // 4. Re-fetch the caller's access level (may have changed while offline).
+            try {
+                const me = await this.fetchHelper.sceneAccessMeGET(session.sceneInstanceUuid);
+                if (me?.level) {
+                    session.access = me.level;
+                }
+            } catch {
+                // If the call fails, assume the previous access level still holds.
+            }
+
+            // 5. Broadcast our updated user state with the restored access level.
+            this.setLocalUserState(session.awareness, session.access);
+
+            // 6. Signal the scene view to rebuild the Three.js scene from the fresh data.
+            this.eventAggregator.publish('sharedSceneReconnected', { tabIndex });
+
+        } catch {
+            // Re-fetch failed (network still flaky). The Yjs sync-step protocol
+            // will keep trying to bring the Y.Doc up-to-date; just clear the banner
+            // so the user isn't stuck staring at "Disconnected".
+        } finally {
+            session.disconnectBanner = null;
+        }
     }
 }

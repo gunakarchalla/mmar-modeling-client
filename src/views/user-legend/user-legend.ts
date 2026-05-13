@@ -28,6 +28,10 @@ export class UserLegend {
         return this.sharedDocService.forTab(this.globalObjectInstance.selectedTab) !== null;
     }
 
+    get disconnectBanner(): string | null {
+        return this.sharedDocService.forTab(this.globalObjectInstance.selectedTab)?.disconnectBanner ?? null;
+    }
+
     private refresh(): void {
         const session = this.sharedDocService.forTab(this.globalObjectInstance.selectedTab);
         if (!session) {
