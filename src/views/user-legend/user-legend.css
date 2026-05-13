@@ -1,5 +1,5 @@
 .user-legend {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 0 4px;

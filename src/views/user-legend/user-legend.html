@@ -1,4 +1,8 @@
 <template>
+  <div class="sync-banner" if.bind="disconnectBanner">
+    <mdc-icon class="sync-banner__icon">sync_problem</mdc-icon>
+    <span class="sync-banner__text">${disconnectBanner}</span>
+  </div>
   <div class="user-legend" if.bind="isVisible">
     <span
       repeat.for="u of users"
@@ -7,9 +11,5 @@
       mdc-tooltip="${u.username}${u.isLocal ? ' (you)' : ''}">
       ${u.initials}
     </span>
-  </div>
-  <div class="sync-banner" if.bind="disconnectBanner">
-    <mdc-icon class="sync-banner__icon">sync_problem</mdc-icon>
-    <span class="sync-banner__text">${disconnectBanner}</span>
   </div>
 </template>

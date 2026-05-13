@@ -3,33 +3,35 @@
 <import from="./../auto-save/auto-save"></import>
 <import from="./../user-legend/user-legend"></import>
 
-<mdc-button if.bind="!globalObjectInstance.accessToken" outlined
-    click.trigger="userManagement.open()">Login</mdc-button>
-<mdc-button style="text-align: center; margin: 1px;" if.bind="globalObjectInstance.accessToken" outlined
-    click.trigger="removeJWT()">Logout</mdc-button>
-<mdc-dialog view-model.ref="userManagement">
-    <user-management user-management.bind="userManagement"></user-management>
-</mdc-dialog>
-<button mdc-button disabled mdc-tooltip="zoom in" click.trigger="zoomIn()">
-    <mdc-icon>zoom_in</mdc-icon>
-</button>
-<button mdc-button disabled mdc-tooltip="zoom out" click.trigger="zoomOut()">
-    <mdc-icon>zoom_out</mdc-icon>
-</button>
-<a class="vl"></a>
-<auto-save></auto-save>
-<user-legend></user-legend>
-<a class="vl"></a>
-<button mdc-button disabled mdc-tooltip="undo" click.trigger="undo()">
-    <mdc-icon>undo</mdc-icon>
-</button>
-<button mdc-button disabled mdc-tooltip="redo" click.trigger="redo()">
-    <mdc-icon>redo</mdc-icon>
-</button>
-<a class="vl"></a>
-<button mdc-button mdc-tooltip="delete" click.trigger="delete()">
-    <mdc-icon>delete</mdc-icon>
-</button>
-<a class="vl"></a>
-<camera-toggle></camera-toggle>
-<a class="vl"></a>
+<div style="display: flex; align-items: center; width: 100%; height: 100%;">
+    <mdc-button if.bind="!globalObjectInstance.accessToken" outlined
+        click.trigger="userManagement.open()">Login</mdc-button>
+    <mdc-button style="text-align: center; margin: 1px;" if.bind="globalObjectInstance.accessToken" outlined
+        click.trigger="removeJWT()">Logout</mdc-button>
+    <mdc-dialog view-model.ref="userManagement">
+        <user-management user-management.bind="userManagement"></user-management>
+    </mdc-dialog>
+    <button mdc-button disabled mdc-tooltip="zoom in" click.trigger="zoomIn()">
+        <mdc-icon>zoom_in</mdc-icon>
+    </button>
+    <button mdc-button disabled mdc-tooltip="zoom out" click.trigger="zoomOut()">
+        <mdc-icon>zoom_out</mdc-icon>
+    </button>
+    <a class="vl"></a>
+    <auto-save></auto-save>
+    <a class="vl"></a>
+    <button mdc-button disabled mdc-tooltip="undo" click.trigger="undo()">
+        <mdc-icon>undo</mdc-icon>
+    </button>
+    <button mdc-button disabled mdc-tooltip="redo" click.trigger="redo()">
+        <mdc-icon>redo</mdc-icon>
+    </button>
+    <a class="vl"></a>
+    <button mdc-button mdc-tooltip="delete" click.trigger="delete()">
+        <mdc-icon>delete</mdc-icon>
+    </button>
+    <a class="vl"></a>
+    <camera-toggle></camera-toggle>
+    <div style="flex: 1;"></div>
+    <user-legend></user-legend>
+</div>

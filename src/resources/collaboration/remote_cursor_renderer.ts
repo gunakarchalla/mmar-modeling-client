@@ -107,7 +107,7 @@ export class RemoteCursorRenderer {
 
             const world = cursor.world as { x: number; y: number; z: number };
             // Place slightly above Z=0 so the sprite is visible over flat scene objects
-            entry.sprite.position.set(world.x, world.y, (world.z ?? 0) + 5);
+            entry.sprite.position.set(world.x, world.y, (world.z ?? 0) + 0.1);
         }
 
         this.globalObjectInstance.render = true;
@@ -140,8 +140,8 @@ export class RemoteCursorRenderer {
             transparent: true,
         });
         const sprite = new THREE.Sprite(material);
-        // Scale to roughly 30 world-units so it's visible but not huge
-        sprite.scale.set(30, 30, 1);
+        // Scale to roughly 1 world-units so it's visible but not huge
+        sprite.scale.set(0.2, 0.2, 0.2);
         return sprite;
     }
 }
