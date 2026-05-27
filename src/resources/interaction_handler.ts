@@ -65,8 +65,6 @@ export class InteractionHandler {
 
 
 
-  private readOnlyNotified = false;
-
   //function that is called on mouse click
 
   // ------------------------------------
@@ -77,21 +75,6 @@ export class InteractionHandler {
     this.clickedButton = event.button;
     this.dragging = this.globalObjectInstance.transformControls.dragging;
     this.programState = this.globalStateObject.getState();
-
-    // Block all write-mode interactions for read-only collaborators.
-    // ViewMode (index 1) is allowed — it only reads/selects, never mutates.
-    const tabAccess = this.globalObjectInstance.currentTabAccess;
-    if (tabAccess === 'read' && this.programState !== this.globalStateObject.stateNames[1]) {
-      if (!this.readOnlyNotified) {
-        this.logger.log('You have read-only access on this scene — editing is not permitted.', 'info');
-        this.readOnlyNotified = true;
-      }
-      return;
-    }
-    // Reset the notification flag when the user is in view mode or has write access
-    if (tabAccess !== 'read') {
-      this.readOnlyNotified = false;
-    }
 
     //set the raycaster
     this.globalObjectInstance.raycaster = this.rayHelper.shootRay(event);
@@ -360,7 +343,7 @@ export class InteractionHandler {
         if (this.globalObjectInstance.autoSave) {
           this.globalObjectInstance.doSceneInstancePatch = true;
           // In shared mode also set the local-origin flag so the shared auto-save picks it up
-          if (this.globalObjectInstance.currentTabAccess && this.globalObjectInstance.currentTabAccess !== 'read') {
+          if (this.globalObjectInstance.currentTabAccess) {
             this.globalObjectInstance.doSceneInstancePatchLocal = true;
           }
         }
@@ -652,7 +635,7 @@ export class InteractionHandler {
       if (this.globalObjectInstance.autoSave) {
         this.globalObjectInstance.doSceneInstancePatch = true;
         // In shared mode also set the local-origin flag
-        if (this.globalObjectInstance.currentTabAccess && this.globalObjectInstance.currentTabAccess !== 'read') {
+        if (this.globalObjectInstance.currentTabAccess) {
           this.globalObjectInstance.doSceneInstancePatchLocal = true;
         }
       }
@@ -705,7 +688,9 @@ export class InteractionHandler {
       let object: THREE.Mesh = this.intersect.object as unknown as THREE.Mesh;
       const simulationCode: string = object.userData.expression;
       const parentInstance = await this.instanceUtility.getAnyInstance(object.parent.uuid);
-      this.simulationUtility.runSimulationFunction(simulationCode, parentInstance);
+      if (parentInstance) {
+        this.simulationUtility.runSimulationFunction(simulationCode, parentInstance);
+      }
     }
   }
 

@@ -28,6 +28,9 @@ export class AutoSave {
                     this.logger.log('AutoSave (shared): saving local changes', 'info');
                     await this.persistencyHandler.persistSceneInstanceToDB();
                     this.globalObjectInstance.doSceneInstancePatchLocal = false;
+                } else if (this.globalObjectInstance.doSceneInstancePatchLocal && session.access === 'read') {
+                    window.alert("You don't have enough authorization to edit this scene instance.");
+                    this.globalObjectInstance.doSceneInstancePatchLocal = false;
                 }
             } else {
                 // Non-shared: existing behaviour

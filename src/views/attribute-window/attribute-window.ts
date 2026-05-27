@@ -57,10 +57,6 @@ export class AttributeWindow {
   ) {
   }
 
-  get isReadOnly(): boolean {
-    return this.globalObjectInstance.currentTabAccess === 'read';
-  }
-
   async attached() {
     this.eventAggregator.subscribe('updateAttributeGui', this.updater.bind(this));
     this.eventAggregator.subscribe('removeAttributeGui', await this.delayedReset.bind(this));
@@ -297,8 +293,7 @@ export class AttributeWindow {
   async fieldChange(attributeInstance: AttributeInstance) {
     const session = this.sharedDocService.forTab(this.globalObjectInstance.selectedTab);
 
-    // Block writes from read-only collaborators or while applying a remote Yjs change
-    if (session?.access === 'read') return;
+    // Skip field changes that are being applied from a remote Yjs update
     if (session?.applyingRemote) return;
 
     //update attribute value
