@@ -69,9 +69,9 @@ export class SharedDocService {
         const ydoc = new Y.Doc();
         const localOrigin: object = {};
 
-        // Populate the Y.Doc before connecting so the first client pushes its
-        // full state to the server's empty room document.
-        sceneInstanceToYDoc(sceneInstance, ydoc, localOrigin);
+        if (access !== 'read') {
+            sceneInstanceToYDoc(sceneInstance, ydoc, localOrigin);
+        }
 
         const syncUrl = (process.env as any).SYNC_URL || 'ws://localhost:8060';
         const token = this.globalObjectInstance.accessToken;
@@ -251,14 +251,7 @@ export class SharedDocService {
                 tabCtx.sceneInstance = freshScene;
             }
 
-            // 3. Re-populate the Y.Doc from the fresh REST snapshot.
-            //    Use localOrigin so our classInstances observer ignores these writes;
-            //    the scene is rebuilt below via the EventAggregator reload signal.
-            if (freshScene) {
-                sceneInstanceToYDoc(freshScene, session.ydoc, session.localOrigin);
-            }
-
-            // 4. Re-fetch the caller's access level (may have changed while offline).
+            // 3. Re-fetch the caller's access level (may have changed while offline).
             try {
                 const me = await this.fetchHelper.sceneAccessMeGET(session.sceneInstanceUuid);
                 if (me?.level) {
@@ -268,16 +261,14 @@ export class SharedDocService {
                 // If the call fails, assume the previous access level still holds.
             }
 
-            // 5. Broadcast our updated user state with the restored access level.
+            // 4. Broadcast our updated user state with the restored access level.
             this.setLocalUserState(session.awareness, session.access);
 
-            // 6. Signal the scene view to rebuild the Three.js scene from the fresh data.
+            // 5. Signal the scene view to rebuild the Three.js scene from the fresh data.
             this.eventAggregator.publish('sharedSceneReconnected', { tabIndex });
 
         } catch {
-            // Re-fetch failed (network still flaky). The Yjs sync-step protocol
-            // will keep trying to bring the Y.Doc up-to-date; just clear the banner
-            // so the user isn't stuck staring at "Disconnected".
+
         } finally {
             session.disconnectBanner = null;
         }
