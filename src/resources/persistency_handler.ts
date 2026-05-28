@@ -1,6 +1,6 @@
 import { FetchHelper } from './services/fetchHelper';
 import { SnapshotService } from './services/snapshot_service';
-import { singleton } from 'aurelia';
+import { singleton, EventAggregator } from 'aurelia';
 import { plainToInstance } from "class-transformer";
 import * as THREE from "three";
 
@@ -27,8 +27,31 @@ export class PersistencyHandler {
     private fetchHelper: FetchHelper,
     private logger: Logger,
     private expression: ExpressionUtility,
-    private snapshotService: SnapshotService
-  ) { }
+    private snapshotService: SnapshotService,
+    private eventAggregator: EventAggregator
+  ) {
+    // When a remote peer adds a class instance, render it in the local Three.js scene.
+    this.eventAggregator.subscribe('remoteClassInstanceAdded', async ({ tabIndex }: { tabIndex: number }) => {
+      const savedTab = this.globalObjectInstance.selectedTab;
+      this.globalObjectInstance.selectedTab = tabIndex;
+      try {
+        await this.checkIfClassinstanceInScene();
+      } finally {
+        this.globalObjectInstance.selectedTab = savedTab;
+      }
+    });
+
+    // When a remote peer adds a relation class instance, render it in the local Three.js scene.
+    this.eventAggregator.subscribe('remoteRelationInstanceAdded', async ({ tabIndex }: { tabIndex: number }) => {
+      const savedTab = this.globalObjectInstance.selectedTab;
+      this.globalObjectInstance.selectedTab = tabIndex;
+      try {
+        await this.checkIfRelationclassinstanceInScene();
+      } finally {
+        this.globalObjectInstance.selectedTab = savedTab;
+      }
+    });
+  }
 
   async checkIfClassinstanceInScene() {
 
@@ -146,6 +169,11 @@ export class PersistencyHandler {
     for (const relationclass_instance of sceneInstance.relationclasses_instances) {
       this.logger.log('we check the relationclass_instance: ' + relationclass_instance.uuid, 'info');
 
+      // Skip if this relation class instance is already rendered in the scene
+      if (this.globalObjectInstance.dragObjects.some(o => o.uuid === relationclass_instance.uuid)) {
+        this.logger.log('relationclass_instance already in scene: ' + relationclass_instance.uuid, 'info');
+        continue;
+      }
 
       const metaclass: Relationclass = await that.metaUtility.getMetaRelationclass(relationclass_instance.uuid_class);
       const linePoints: object[] = relationclass_instance.line_points;

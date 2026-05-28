@@ -323,6 +323,17 @@ export class AttributeWindow {
           },
           session.localOrigin
         );
+      } else if (this.currentRelationclassInstance) {
+        applyLocalChangeToYDoc(
+          session.ydoc,
+          {
+            type: 'relation_attribute_value',
+            relationClassInstanceUuid: this.currentRelationclassInstance.uuid,
+            attributeUuid: attributeInstance.uuid,
+            value: attributeInstance.value
+          },
+          session.localOrigin
+        );
       }
       this.globalObjectInstance.doSceneInstancePatchLocal = true;
     } else {

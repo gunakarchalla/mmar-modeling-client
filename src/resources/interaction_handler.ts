@@ -22,6 +22,7 @@ import { Logger } from './services/logger';
 import { ExpressionUtility } from './expression_utility';
 import { SimulationUtility } from './services/simulation_utility';
 import { PersistencyHandler } from './persistency_handler';
+import { applyLocalChangeToYDoc } from './collaboration/y_mapping';
 
 @singleton()
 export class InteractionHandler {
@@ -348,6 +349,13 @@ export class InteractionHandler {
           }
         }
 
+        // Propagate the new class instance to all peers via Y.Doc.
+        // This runs AFTER all port/attribute creation awaits so the instance is fully populated.
+        const session = this.globalObjectInstance.sharedDocServiceRef?.forTab(this.globalObjectInstance.selectedTab);
+        if (session && !session.applyingRemote) {
+          applyLocalChangeToYDoc(session.ydoc, { type: 'add_class_instance', classInstance: class_instance }, session.localOrigin);
+        }
+
       }
     } else if (this.intersects.length > 0 && this.intersects.length >= 2 && this.clickedButton == 0) {
       //getPortIntersectPosition(intersects);
@@ -638,6 +646,12 @@ export class InteractionHandler {
         if (this.globalObjectInstance.currentTabAccess) {
           this.globalObjectInstance.doSceneInstancePatchLocal = true;
         }
+      }
+
+      // Propagate the fully-formed relation class instance (both roles set) to peers.
+      const relSession = this.globalObjectInstance.sharedDocServiceRef?.forTab(this.globalObjectInstance.selectedTab);
+      if (relSession && !relSession.applyingRemote) {
+        applyLocalChangeToYDoc(relSession.ydoc, { type: 'add_relation_class_instance', relationClassInstance: relationclass_instance }, relSession.localOrigin);
       }
     }
     //if right click and there is no relationclass_instance in creation reset state to view mode

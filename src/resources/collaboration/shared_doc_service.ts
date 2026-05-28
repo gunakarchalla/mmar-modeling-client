@@ -5,7 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 import { SceneInstance } from '../../../../mmar-global-data-structure';
 import { GlobalDefinition } from '../global_definitions';
 import { FetchHelper } from '../services/fetchHelper';
-import { sceneInstanceToYDoc, applyYDocChangeToSceneInstance } from './y_mapping';
+import { sceneInstanceToYDoc, applyYDocChangeToSceneInstance, applyYDocRelationChangeToSceneInstance, YDocChangeResult } from './y_mapping';
 import { userColor, initials } from './color_util';
 
 // ---------------------------------------------------------------------------
@@ -161,16 +161,64 @@ export class SharedDocService {
 
             session.applyingRemote = true;
             try {
+                const aggregate: YDocChangeResult = { classInstanceAdded: false, relationInstanceAdded: false, changedAttributeInstances: [] };
                 for (const event of events) {
-                    applyYDocChangeToSceneInstance(
+                    const r = applyYDocChangeToSceneInstance(
                         event,
                         tabCtx.sceneInstance,
                         tabCtx.threeScene,
                         this.globalObjectInstance
                     );
+                    if (r.classInstanceAdded) aggregate.classInstanceAdded = true;
+                    aggregate.changedAttributeInstances.push(...r.changedAttributeInstances);
                 }
                 // Signal Three.js renderer to redraw
                 this.globalObjectInstance.render = true;
+
+                // Trigger VizRep updates for remotely-changed attribute values
+                for (const ai of aggregate.changedAttributeInstances) {
+                    this.eventAggregator.publish('checkForVizRepUpdateByAttributeInstance', ai);
+                }
+                // Trigger render of newly added class instances via PersistencyHandler
+                if (aggregate.classInstanceAdded) {
+                    this.eventAggregator.publish('remoteClassInstanceAdded', { tabIndex });
+                }
+            } finally {
+                session.applyingRemote = false;
+            }
+        });
+
+        // Observer for RelationclassInstance add / remove / attribute / line-point changes
+        const relationInstancesMap = session.ydoc.getMap<Y.Map<unknown>>('relationclasses_instances');
+
+        relationInstancesMap.observeDeep((events: Y.YEvent<Y.Map<unknown>>[], transaction: Y.Transaction) => {
+            if (transaction.origin === session.localOrigin) return;
+            if (session.applyingRemote) return;
+
+            const tabCtx = this.globalObjectInstance.tabContext[tabIndex];
+            if (!tabCtx) return;
+
+            session.applyingRemote = true;
+            try {
+                const aggregate: YDocChangeResult = { classInstanceAdded: false, relationInstanceAdded: false, changedAttributeInstances: [] };
+                for (const event of events) {
+                    const r = applyYDocRelationChangeToSceneInstance(
+                        event,
+                        tabCtx.sceneInstance,
+                        tabCtx.threeScene,
+                        this.globalObjectInstance
+                    );
+                    if (r.relationInstanceAdded) aggregate.relationInstanceAdded = true;
+                    aggregate.changedAttributeInstances.push(...r.changedAttributeInstances);
+                }
+                this.globalObjectInstance.render = true;
+
+                for (const ai of aggregate.changedAttributeInstances) {
+                    this.eventAggregator.publish('checkForVizRepUpdateByAttributeInstance', ai);
+                }
+                if (aggregate.relationInstanceAdded) {
+                    this.eventAggregator.publish('remoteRelationInstanceAdded', { tabIndex });
+                }
             } finally {
                 session.applyingRemote = false;
             }

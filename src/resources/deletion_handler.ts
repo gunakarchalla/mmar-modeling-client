@@ -8,6 +8,7 @@ import { ClassInstance, AttributeInstance, UUID, RelationclassInstance, PortInst
 import { GlobalSelectedObject } from "./global_selected_object";
 import { Logger } from './services/logger';
 import { FetchHelper } from './services/fetchHelper';
+import { applyLocalChangeToYDoc } from './collaboration/y_mapping';
 
 
 @singleton()
@@ -55,6 +56,13 @@ export class DeletionHandler {
         await this.deleteConnectedPortInstances(classInstance);
 
         sceneInstance.class_instances.splice(index, 1);
+
+        // Propagate deletion to peers before removing from Three.js scene.
+        const session = this.globalObjectInstance.sharedDocServiceRef?.forTab(this.globalObjectInstance.selectedTab);
+        if (session && !session.applyingRemote) {
+            applyLocalChangeToYDoc(session.ydoc, { type: 'remove_class_instance', classInstanceUuid: classInstance.uuid }, session.localOrigin);
+        }
+
         const object: THREE.Object3D = this.globalObjectInstance.scene.getObjectByProperty('uuid', classInstance.uuid);
 
         await this.gc.deleteObject(object as unknown as THREE.Mesh);
@@ -153,6 +161,12 @@ export class DeletionHandler {
         }
 
         sceneInstance.relationclasses_instances.splice(index, 1);
+
+        // Propagate deletion to peers.
+        const relSession = this.globalObjectInstance.sharedDocServiceRef?.forTab(this.globalObjectInstance.selectedTab);
+        if (relSession && !relSession.applyingRemote) {
+            applyLocalChangeToYDoc(relSession.ydoc, { type: 'remove_relation_class_instance', relationClassInstanceUuid: relationclassInstance.uuid }, relSession.localOrigin);
+        }
 
         const object: THREE.Object3D = this.globalObjectInstance.scene.getObjectByProperty('uuid', relationclassInstance.uuid);
 
