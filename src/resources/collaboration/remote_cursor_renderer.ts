@@ -4,13 +4,16 @@ import { GlobalDefinition } from '../global_definitions';
 import { SharedDocService } from './shared_doc_service';
 
 interface CursorEntry {
-    sprite: THREE.Sprite;
+    arrow: THREE.ArrowHelper;
     tabIndex: number;
 }
 
+/** Smallest arrow length (world units) we bother drawing — avoids degenerate zero-length arrows. */
+const MIN_ARROW_LENGTH = 1e-3;
+
 @singleton()
 export class RemoteCursorRenderer {
-    /** clientId → sprite entry */
+    /** clientId → arrow entry */
     private cursors = new Map<number, CursorEntry>();
     /** tabIndex → awareness change handler (for cleanup) */
     private handlers = new Map<number, () => void>();
@@ -34,19 +37,18 @@ export class RemoteCursorRenderer {
     }
 
     /**
-     * Remove all cursor sprites for a tab and unsubscribe.
+     * Remove all cursor arrows for a tab and unsubscribe.
      * Call this on SharedDocService.detach().
      */
     clearForTab(tabIndex: number): void {
         const tabCtx = this.globalObjectInstance.tabContext[tabIndex];
 
-        // Remove sprites belonging to this tab from its scene
+        // Remove arrows belonging to this tab from its scene
         for (const [clientId, entry] of Array.from(this.cursors)) {
             if (entry.tabIndex === tabIndex) {
                 if (tabCtx?.threeScene) {
-                    tabCtx.threeScene.remove(entry.sprite);
-                    entry.sprite.material.map?.dispose();
-                    (entry.sprite.material as THREE.SpriteMaterial).dispose();
+                    tabCtx.threeScene.remove(entry.arrow);
+                    entry.arrow.dispose();
                 }
                 this.cursors.delete(clientId);
             }
@@ -73,75 +75,82 @@ export class RemoteCursorRenderer {
         const localId = session.awareness.clientID;
         const states = session.awareness.getStates();
 
-        // Remove sprites for clients that left or deactivated their cursor
+        // Remove arrows for clients that left or deactivated their cursor
         for (const [clientId, entry] of Array.from(this.cursors)) {
             if (entry.tabIndex !== tabIndex) continue;
             const state = states.get(clientId);
             const cursorActive = state?.cursor?.active === true;
             if (!states.has(clientId) || !cursorActive) {
-                tabCtx.threeScene.remove(entry.sprite);
-                entry.sprite.material.map?.dispose();
-                (entry.sprite.material as THREE.SpriteMaterial).dispose();
+                tabCtx.threeScene.remove(entry.arrow);
+                entry.arrow.dispose();
                 this.cursors.delete(clientId);
             }
         }
 
-        // Add / update sprites for remote clients with active cursors
+        // Add / update arrows for remote clients with active cursors
         for (const [clientId, state] of Array.from(states)) {
             if (clientId === localId) continue; // skip self
 
-            const cursor = state?.cursor;
-            if (!cursor?.active) continue;
+            const cursor = state?.cursor as
+                | { active?: boolean; origin?: { x: number; y: number; z: number }; target?: { x: number; y: number; z: number } }
+                | undefined;
+            if (!cursor?.active || !cursor.origin || !cursor.target) continue;
 
-            const user = state?.user as { initials?: string; color?: string } | undefined;
+            const user = state?.user as { color?: string } | undefined;
             const color = user?.color ?? 'hsl(0, 70%, 55%)';
-            const label = user?.initials ?? '?';
 
             let entry = this.cursors.get(clientId);
             if (!entry) {
-                const sprite = this.createCursorSprite(label, color);
-                tabCtx.threeScene.add(sprite);
-                entry = { sprite, tabIndex };
+                const arrow = this.createCursorArrow(color);
+                tabCtx.threeScene.add(arrow);
+                entry = { arrow, tabIndex };
                 this.cursors.set(clientId, entry);
             }
 
-            const world = cursor.world as { x: number; y: number; z: number };
-            // Place slightly above Z=0 so the sprite is visible over flat scene objects
-            entry.sprite.position.set(world.x, world.y, (world.z ?? 0) + 0.1);
+            this.orientArrow(entry.arrow, cursor.origin, cursor.target);
         }
 
         this.globalObjectInstance.render = true;
     }
 
-    private createCursorSprite(label: string, color: string): THREE.Sprite {
-        const size = 64;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d')!;
+    /** Point an arrow from `origin` to `target`, scaling its head with its length. */
+    private orientArrow(
+        arrow: THREE.ArrowHelper,
+        origin: { x: number; y: number; z: number },
+        target: { x: number; y: number; z: number },
+    ): void {
+        const from = new THREE.Vector3(origin.x, origin.y, origin.z);
+        const dir = new THREE.Vector3(target.x, target.y, target.z).sub(from);
+        const length = dir.length();
+        if (length < MIN_ARROW_LENGTH) return;
 
-        // Resolve HSL string to a colour the canvas understands
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
-        ctx.fill();
+        dir.normalize();
+        arrow.position.copy(from);
+        arrow.setDirection(dir);
 
-        // White initials
-        ctx.fillStyle = 'white';
-        ctx.font = `bold ${Math.round(size * 0.38)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label.slice(0, 2), size / 2, size / 2);
+        // Keep the head proportional but capped so long arrows don't get a huge cone.
+        const headLength = Math.min(length * 0.2, 1);
+        arrow.setLength(length, headLength, headLength * 0.5);
+    }
 
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({
-            map: texture,
-            depthTest: false,
-            transparent: true,
-        });
-        const sprite = new THREE.Sprite(material);
-        // Scale to roughly 1 world-units so it's visible but not huge
-        sprite.scale.set(0.2, 0.2, 0.2);
-        return sprite;
+    private createCursorArrow(color: string): THREE.ArrowHelper {
+        const hex = new THREE.Color(color).getHex();
+        const arrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, -1), // placeholder direction (set on first orient)
+            new THREE.Vector3(),
+            1,
+            hex,
+        );
+
+        // Respect scene depth so the arrow is occluded by objects in front of it
+        // (matches how a real ray would be hidden behind geometry it passes behind).
+        for (const part of [arrow.line, arrow.cone]) {
+            const material = part.material as THREE.Material;
+            material.depthTest = true;
+            material.depthWrite = true;
+            material.transparent = false;
+            part.renderOrder = 0;
+        }
+        return arrow;
     }
 }

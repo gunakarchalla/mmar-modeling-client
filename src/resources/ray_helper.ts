@@ -7,7 +7,6 @@ import { SharedDocService } from './collaboration/shared_doc_service';
 export class RayHelper{
 
   private lastCursorBroadcast = 0;
-  private readonly cursorPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
   constructor(
     private globalObjectInstance : GlobalDefinition,
@@ -61,6 +60,21 @@ clearCursor(): void {
   session.awareness.setLocalStateField('cursor', { active: false });
 }
 
+/**
+ * Broadcast the local pointer as a world-space ray so remote clients can draw it
+ * as an arrow: tail on the camera's near plane, head on the first scene object the
+ * ray hits — or, when it misses everything, on the camera's far plane.
+ *
+ * The near/far plane points are obtained by unprojecting the pointer's normalized
+ * device coordinates at the two clip-space depths (z = -1 → near plane, z = +1 →
+ * far plane). Because the unprojection runs through the active camera's inverse
+ * projection matrix, this is identical to how THREE.Raycaster builds its ray and
+ * works without branching for both the orthographic (2D) and perspective (3D)
+ * cameras — the broadcast adapts automatically as the user toggles modes.
+ *
+ * Computed here, on the broadcaster, because only this client knows its own camera
+ * and what its ray hits in the shared scene. Throttled to ~30 fps.
+ */
 private broadcastCursor(): void {
   const now = Date.now();
   if (now - this.lastCursorBroadcast < 33) return;
@@ -69,16 +83,23 @@ private broadcastCursor(): void {
   const session = this.sharedDocService.forTab(this.globalObjectInstance.selectedTab);
   if (!session) return;
 
-  const worldPoint = new THREE.Vector3();
-  const hit = this.globalObjectInstance.raycaster.ray.intersectPlane(this.cursorPlane, worldPoint);
+  const camera = this.globalObjectInstance.camera;
+  const mouse = this.globalObjectInstance.mouse;
+
+  // Arrow tail: pointer projected onto the camera's near plane.
+  const origin = new THREE.Vector3(mouse.x, mouse.y, -1).unproject(camera);
+
+  // Arrow head: the first object the ray hits, otherwise the camera's far plane.
+  // The raycaster was already set from this camera in shootRay().
+  const hits = this.globalObjectInstance.raycaster.intersectObjects(this.globalObjectInstance.dragObjects, false);
+  const target = hits.length > 0
+    ? hits[0].point
+    : new THREE.Vector3(mouse.x, mouse.y, 1).unproject(camera);
 
   session.awareness.setLocalStateField('cursor', {
     active: true,
-    world: hit ? { x: worldPoint.x, y: worldPoint.y, z: worldPoint.z } : { x: 0, y: 0, z: 0 },
-    ndc: {
-      x: this.globalObjectInstance.mouse.x,
-      y: this.globalObjectInstance.mouse.y,
-    },
+    origin: { x: origin.x, y: origin.y, z: origin.z },
+    target: { x: target.x, y: target.y, z: target.z },
   });
 }
 
