@@ -9,6 +9,7 @@ import { RayHelper } from './ray_helper';
 import { RelationclassInstance } from '../../../mmar-global-data-structure';
 import { MechanismUtility } from './services/mechanism_utility';
 import { CoordinatesUpdater } from './services/coordinates_updater';
+import { RemoteSelectionRenderer } from './collaboration/remote_selection_renderer';
 
 @singleton()
 export class Animator {
@@ -19,7 +20,8 @@ export class Animator {
     private rayHelper: RayHelper,
     private instanceUtility: InstanceUtility,
     private mechanismUtility: MechanismUtility,
-    private coordinatesUpdater: CoordinatesUpdater
+    private coordinatesUpdater: CoordinatesUpdater,
+    private remoteSelectionRenderer: RemoteSelectionRenderer
   ) {
 
   }
@@ -44,6 +46,8 @@ export class Animator {
 
     if (this.globalObjectInstance.render) {
       this.globalObjectInstance.render = false;
+      // Keep collaborators' selection boxes glued to objects they move (no-op when none).
+      this.remoteSelectionRenderer.refreshBoxes();
       this.globalObjectInstance.renderer.render(this.globalObjectInstance.scene, this.globalObjectInstance.camera);
       
         if (this.globalObjectInstance.runMechanism) {

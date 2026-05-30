@@ -16,6 +16,7 @@ import { Logger } from 'resources/services/logger';
 import { DialogHelper } from 'resources/dialog_helper';
 import { SharedDocService, AccessLevel } from '../../resources/collaboration/shared_doc_service';
 import { RemoteCursorRenderer } from '../../resources/collaboration/remote_cursor_renderer';
+import { RemoteSelectionRenderer } from '../../resources/collaboration/remote_selection_renderer';
 
 export class Scenegroup {
     private treeView: MdcTreeView;
@@ -48,6 +49,7 @@ export class Scenegroup {
         private snapshotService: SnapshotService,
         private sharedDocService: SharedDocService,
         private remoteCursorRenderer: RemoteCursorRenderer,
+        private remoteSelectionRenderer: RemoteSelectionRenderer,
     ) {
         // subscribe to updateSceneGroup event that is emitted, e.g. when a new scdneType or SceneInstance file is imported
         this.eventAggregator.subscribe('updateSceneGroup', this.updateTree.bind(this));
@@ -70,6 +72,7 @@ export class Scenegroup {
             window.alert(`Your access to "${name}" was revoked. The tab will be closed.`);
             // Remove the shared session (provider is already stopped by SharedDocService).
             this.remoteCursorRenderer.clearForTab(payload.tabIndex);
+            this.remoteSelectionRenderer.clearForTab(payload.tabIndex);
             // Remove the tab from the context.
             if (payload.tabIndex >= 0 && payload.tabIndex < this.globalObjectInstance.tabContext.length) {
                 this.globalObjectInstance.tabContext.splice(payload.tabIndex, 1);
@@ -265,6 +268,7 @@ export class Scenegroup {
             const tabIndex = this.globalObjectInstance.tabContext.length - 1;
             this.sharedDocService.attach(tabIndex, sceneInstance, access);
             this.remoteCursorRenderer.bindToSession(tabIndex);
+            this.remoteSelectionRenderer.bindToSession(tabIndex);
             tabContext.isShared = true;
             this.logger.log(`Shared session attached for scene ${sceneInstance.uuid} (access: ${access})`, 'info');
         } catch (err) {

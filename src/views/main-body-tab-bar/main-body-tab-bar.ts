@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { Logger } from 'resources/services/logger';
 import { SharedDocService } from 'resources/collaboration/shared_doc_service';
 import { RemoteCursorRenderer } from 'resources/collaboration/remote_cursor_renderer';
+import { RemoteSelectionRenderer } from 'resources/collaboration/remote_selection_renderer';
 
 export class MainBodyTabBar {
 
@@ -28,6 +29,7 @@ export class MainBodyTabBar {
     private eventAggregator: EventAggregator,
     private sharedDocService: SharedDocService,
     private remoteCursorRenderer: RemoteCursorRenderer,
+    private remoteSelectionRenderer: RemoteSelectionRenderer,
   ) { }
 
 
@@ -80,6 +82,7 @@ export class MainBodyTabBar {
     // Tear down any shared session before removing the tab so the websocket
     // is closed gracefully and the user disappears from other clients' awareness.
     this.remoteCursorRenderer.clearForTab(index);
+    this.remoteSelectionRenderer.clearForTab(index);
     this.sharedDocService.detach(index);
 
     if (index > 0 || (index == 0 && this.globalObjectInstance.tabContext.length > 1)) {

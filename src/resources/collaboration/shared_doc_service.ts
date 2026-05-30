@@ -140,6 +140,7 @@ export class SharedDocService {
                 },
                 access,
                 cursor: { active: false },
+                selection: { uuid: null },
             });
         } catch {
             // ignore decode errors (e.g. in test environments)
