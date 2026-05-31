@@ -566,7 +566,17 @@ export class InteractionHandler {
       // bendpoint_instance.uuid_relationclass_bendpoint = relationclass_instance.uuid;
       this.logger.log('added relationclass_instance_uuid ' + relationclass_instance.uuid + ' to bendpoint_instance', 'info');
 
-
+      // Propagate the bendpoint to peers as a regular class instance. A bendpoint is a
+      // plain ClassInstance stored in scene.class_instances, and the finished relation's
+      // line_points reference it by UUID. It is sent here (at bendpoint-creation time)
+      // rather than at relation finalize so each bendpoint is rendered on remote peers
+      // before the relation that references it arrives — mirroring the load order
+      // (class instances before relations) in PersistencyHandler.importInstances and
+      // avoiding a missing-object crash in Animator.setPos.
+      const bendpointSession = this.globalObjectInstance.sharedDocServiceRef?.forTab(this.globalObjectInstance.selectedTab);
+      if (bendpointSession && !bendpointSession.applyingRemote) {
+        applyLocalChangeToYDoc(bendpointSession.ydoc, { type: 'add_class_instance', classInstance: bendpoint_instance }, bendpointSession.localOrigin);
+      }
     }
     //----------------------
     //if click on element
