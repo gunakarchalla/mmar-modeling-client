@@ -145,7 +145,7 @@ export class Animator {
   //check if two arrays are the same
   //tolerance is the per-element delta below which two values are treated as equal
   //(default suits scene-unit positions; rotations/scales pass a tighter value)
-  arraysMatch(arr1: number[], arr2: number[], tolerance = 0.09) {
+  arraysMatch(arr1: number[], arr2: number[], tolerance = 0.01) {
     const array1 = arr1;
     const array2 = arr2;
 
