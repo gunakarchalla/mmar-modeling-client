@@ -35,6 +35,7 @@ export class GlobalDefinition {
   objectScaled: boolean;
   allPositions: number[];
   allRotations: number[];
+  allScales: number[];
   ARCamera: THREE.PerspectiveCamera;
   mouse: THREE.Vector2;
   raycaster: THREE.Raycaster;
@@ -87,6 +88,7 @@ export class GlobalDefinition {
     this.objectScaled = false;
     this.allPositions = [];
     this.allRotations = [];
+    this.allScales = [];
     this.ARCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();

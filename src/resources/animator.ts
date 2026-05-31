@@ -66,6 +66,9 @@ export class Animator {
         //create array with the rotations of all objects
         const tempAllRotations: number[] = [];
 
+        //create array with the scales of all objects
+        const tempAllScales: number[] = [];
+
         //to check if something changed, we create an array with all positions and rotations of dragObject
         //this we can then compare to the globalObjectInstance.allPositions and globalObjectInstance.allRotations. If they do not match, we update the 
         //position and set the globalObjectInstance.allPositions to the new values
@@ -79,6 +82,11 @@ export class Animator {
           tempAllRotations.push(quaternion.y);
           tempAllRotations.push(quaternion.z);
           tempAllRotations.push(quaternion.w);
+
+          const scale = element.scale;
+          tempAllScales.push(scale.x);
+          tempAllScales.push(scale.y);
+          tempAllScales.push(scale.z);
 
           if (element.userData.update) {
             //this is for the ports. If they have the userData.update function, update 
@@ -104,12 +112,20 @@ export class Animator {
           await this.coordinatesUpdater.updateCoordinates2DonClassAndPortInstance();
         }
 
-        if (this.arraysMatch(tempAllRotations, this.globalObjectInstance.allRotations) == false) {
+        // Rotations (quaternion components) and scales live in a small numeric range
+        // (≈ -1..1), so the coarse 0.09 position tolerance would miss real changes.
+        // Use a tight tolerance so gradual rotations/scales are detected and propagated.
+        if (this.arraysMatch(tempAllRotations, this.globalObjectInstance.allRotations, 1e-4) == false) {
           await this.coordinatesUpdater.updateRotationOnClassAndPortInstance();
+        }
+
+        if (this.arraysMatch(tempAllScales, this.globalObjectInstance.allScales, 1e-4) == false) {
+          await this.coordinatesUpdater.updateScaleOnClassAndPortInstance();
         }
 
         this.globalObjectInstance.allPositions = tempAllPositions;
         this.globalObjectInstance.allRotations = tempAllRotations;
+        this.globalObjectInstance.allScales = tempAllScales;
 
         //reset objectScaled property
         this.globalObjectInstance.objectScaled = false;
@@ -127,7 +143,9 @@ export class Animator {
 
 
   //check if two arrays are the same
-  arraysMatch(arr1: number[], arr2: number[]) {
+  //tolerance is the per-element delta below which two values are treated as equal
+  //(default suits scene-unit positions; rotations/scales pass a tighter value)
+  arraysMatch(arr1: number[], arr2: number[], tolerance = 0.09) {
     const array1 = arr1;
     const array2 = arr2;
 
@@ -144,8 +162,8 @@ export class Animator {
     // Check if all items exist and are in the same order
     for (let i = 0; i < array1.length; i++) {
       if (array1[i] !== array2[i]) {
-        // check if the difference is less than 0.01
-        if (Math.abs(array1[i] - array2[i]) > 0.09) {
+        // treat as changed only when the delta exceeds the tolerance
+        if (Math.abs(array1[i] - array2[i]) > tolerance) {
           return false;
         }
       }

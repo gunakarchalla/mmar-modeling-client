@@ -10,6 +10,7 @@ import { GlobalDefinition } from '../global_definitions';
 export type LocalChangeType =
     | { type: 'coordinates'; classInstanceUuid: string; x: number; y: number; z: number }
     | { type: 'rotation'; classInstanceUuid: string; x: number; y: number; z: number; w: number }
+    | { type: 'scale'; classInstanceUuid: string; x: number; y: number; z: number }
     | { type: 'attribute_value'; classInstanceUuid: string; attributeUuid: string; value: string }
     | { type: 'add_class_instance'; classInstance: ClassInstance }
     | { type: 'remove_class_instance'; classInstanceUuid: string }
@@ -97,6 +98,15 @@ export function applyLocalChangeToYDoc(
                 rotMap.set('y', change.y);
                 rotMap.set('z', change.z);
                 rotMap.set('w', change.w);
+                break;
+            }
+            case 'scale': {
+                const ciMap = classInstances.get(change.classInstanceUuid);
+                if (!ciMap) break;
+                const cvMap = ciMap.get('custom_variables') as Y.Map<string>;
+                if (!cvMap) break;
+                // custom_variables values are stored as JSON strings (see customVariablesToYMap).
+                cvMap.set('scale', JSON.stringify({ x: change.x, y: change.y, z: change.z }));
                 break;
             }
             case 'attribute_value': {
@@ -247,6 +257,25 @@ export function applyYDocChangeToSceneInstance(
         return result;
     }
 
+    // custom_variables nested Y.Map changed (currently only 'scale' is mirrored to Three.js)
+    if (changedField === 'custom_variables') {
+        const cvMap = event.target as Y.Map<string>;
+        const ci = sceneInstance.class_instances.find(c => c.uuid === classInstanceUuid);
+        if (ci && cvMap.has('scale')) {
+            const scale = parseScale(cvMap.get('scale'));
+            if (scale) {
+                ci.custom_variables = ci.custom_variables ?? {};
+                (ci.custom_variables as Record<string, unknown>)['scale'] = scale;
+                threeScene.traverse((obj: THREE.Object3D) => {
+                    if (obj.uuid === classInstanceUuid) {
+                        applyScaleToThreeObject(obj, scale);
+                    }
+                });
+            }
+        }
+        return result;
+    }
+
     // attribute_instance Y.Map: a specific attribute entry changed
     if (path.length >= 3 && changedField === 'attribute_instance') {
         const attrUuid = path[2] as string;
@@ -388,6 +417,38 @@ export function applyYDocRelationChangeToSceneInstance(
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Parse a JSON-encoded {x,y,z} scale value, returning null on any malformed input. */
+function parseScale(raw: string | undefined): { x: number; y: number; z: number } | null {
+    if (!raw) return null;
+    try {
+        const s = JSON.parse(raw);
+        if (s && typeof s.x === 'number' && typeof s.y === 'number' && typeof s.z === 'number') {
+            return { x: s.x, y: s.y, z: s.z };
+        }
+    } catch { /* ignore malformed JSON */ }
+    return null;
+}
+
+/**
+ * Apply a scale to a Three.js object and inverse-scale its children so they keep
+ * their absolute size. Mirrors the local scale behaviour in
+ * TransformControlsEvents.onTransformControlsMouseUp (mode === 'scale').
+ */
+function applyScaleToThreeObject(object: THREE.Object3D, scale: { x: number; y: number; z: number }): void {
+    object.scale.set(scale.x, scale.y, scale.z);
+    object.traverse((child: THREE.Object3D) => {
+        if (child === object) return;
+        const cv = child.userData?.custom_variables;
+        if (!cv || !('scale' in cv)) {
+            const inverse = new THREE.Vector3(1, 1, 1).divide(object.scale);
+            child.scale.set(inverse.x, inverse.y, inverse.z);
+        } else {
+            const childScale = cv['scale'] as THREE.Vector3;
+            child.scale.set(childScale.x, childScale.y, childScale.z);
+        }
+    });
+}
+
 function classInstanceToYMap(ci: ClassInstance): Y.Map<unknown> {
     const m = new Y.Map<unknown>();
     m.set('uuid', ci.uuid ?? '');
@@ -422,6 +483,18 @@ function classInstanceFromYMap(yMap: Y.Map<unknown>): ClassInstance {
         w: rotMap?.get('w') ?? 1,
     };
     ci.port_instance = [];
+    // custom_variables are stored as a Y.Map of JSON strings (see customVariablesToYMap).
+    const cvMap = yMap.get('custom_variables') as Y.Map<string>;
+    ci.custom_variables = {};
+    if (cvMap) {
+        cvMap.forEach((value, key) => {
+            try {
+                (ci.custom_variables as Record<string, unknown>)[key] = JSON.parse(value);
+            } catch {
+                (ci.custom_variables as Record<string, unknown>)[key] = value;
+            }
+        });
+    }
     const attrMap = yMap.get('attribute_instance') as Y.Map<Y.Map<unknown>>;
     ci.attribute_instance = [];
     if (attrMap) {
