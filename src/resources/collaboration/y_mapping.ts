@@ -11,6 +11,7 @@ export type LocalChangeType =
     | { type: 'coordinates'; classInstanceUuid: string; x: number; y: number; z: number }
     | { type: 'rotation'; classInstanceUuid: string; x: number; y: number; z: number; w: number }
     | { type: 'scale'; classInstanceUuid: string; x: number; y: number; z: number }
+    | { type: 'custom_variable'; classInstanceUuid: string; key: string; value: unknown }
     | { type: 'attribute_value'; classInstanceUuid: string; attributeUuid: string; value: string }
     | { type: 'add_class_instance'; classInstance: ClassInstance }
     | { type: 'remove_class_instance'; classInstanceUuid: string }
@@ -107,6 +108,16 @@ export function applyLocalChangeToYDoc(
                 if (!cvMap) break;
                 // custom_variables values are stored as JSON strings (see customVariablesToYMap).
                 cvMap.set('scale', JSON.stringify({ x: change.x, y: change.y, z: change.z }));
+                break;
+            }
+            case 'custom_variable': {
+                const ciMap = classInstances.get(change.classInstanceUuid);
+                if (!ciMap) break;
+                const cvMap = ciMap.get('custom_variables') as Y.Map<string>;
+                if (!cvMap) break;
+                // custom_variables values are stored as JSON strings (see customVariablesToYMap).
+                // `value` is the full descriptor, e.g. { value, instance_adaptable, user_locked }.
+                cvMap.set(change.key, JSON.stringify(change.value));
                 break;
             }
             case 'attribute_value': {
@@ -257,22 +268,29 @@ export function applyYDocChangeToSceneInstance(
         return result;
     }
 
-    // custom_variables nested Y.Map changed (currently only 'scale' is mirrored to Three.js)
+    // custom_variables nested Y.Map changed. 'scale' drives the object's own scale;
+    // the label-positioning keys (x/y/z offsets, rx/ry/rz/rw) drive the attached text labels.
     if (changedField === 'custom_variables') {
         const cvMap = event.target as Y.Map<string>;
         const ci = sceneInstance.class_instances.find(c => c.uuid === classInstanceUuid);
-        if (ci && cvMap.has('scale')) {
-            const scale = parseScale(cvMap.get('scale'));
-            if (scale) {
-                ci.custom_variables = ci.custom_variables ?? {};
-                (ci.custom_variables as Record<string, unknown>)['scale'] = scale;
-                threeScene.traverse((obj: THREE.Object3D) => {
-                    if (obj.uuid === classInstanceUuid) {
-                        applyScaleToThreeObject(obj, scale);
-                    }
-                });
+        if (!ci) return result;
+        ci.custom_variables = ci.custom_variables ?? {};
+        const threeObj = threeScene.getObjectByProperty('uuid', classInstanceUuid);
+        (event as Y.YMapEvent<string>).changes.keys.forEach((change, key) => {
+            if (change.action === 'delete') {
+                delete (ci.custom_variables as Record<string, unknown>)[key];
+                return;
             }
-        }
+            const parsed = parseCustomVariable(cvMap.get(key));
+            if (parsed === undefined) return;
+            (ci.custom_variables as Record<string, unknown>)[key] = parsed;
+            if (key === 'scale') {
+                const scale = parseScale(cvMap.get(key));
+                if (scale && threeObj) applyScaleToThreeObject(threeObj, scale);
+            } else if (threeObj) {
+                applyCustomVariableToLabels(threeObj, key, parsed);
+            }
+        });
         return result;
     }
 
@@ -416,6 +434,56 @@ export function applyYDocRelationChangeToSceneInstance(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Parse a JSON-encoded custom_variable descriptor, returning undefined on malformed input. */
+function parseCustomVariable(raw: string | undefined): unknown {
+    if (raw === undefined) return undefined;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return raw;
+    }
+}
+
+/**
+ * Mirror a remotely-changed custom variable onto the text labels attached to a
+ * class-instance object. Labels carry their own copy of the positioning variables
+ * in userData.custom_variables (see GraphicContext.graphic_text / attachText); we
+ * update the matching entry and recompute the label transform.
+ */
+function applyCustomVariableToLabels(parentObject: THREE.Object3D, key: string, parsed: unknown): void {
+    const labels = parentObject.userData?.Label;
+    if (!Array.isArray(labels)) return;
+    if (!parsed || typeof parsed !== 'object' || !('value' in (parsed as Record<string, unknown>))) return;
+    const descriptor = parsed as { value: unknown; user_locked?: boolean };
+    for (const label of labels as THREE.Object3D[]) {
+        const cv = label.userData?.custom_variables as Record<string, { value: unknown; user_locked?: boolean }> | undefined;
+        if (!cv || !cv[key]) continue;
+        cv[key].value = descriptor.value;
+        if ('user_locked' in descriptor) cv[key].user_locked = descriptor.user_locked;
+        repositionLabelFromCustomVariables(label);
+    }
+}
+
+/**
+ * Recompute a label's position/rotation from its custom_variables, mirroring the
+ * heuristic in GraphicContext.attachText: position keys contain "rel" + axis, and
+ * rotation is held in rx/ry/rz/rw.
+ */
+function repositionLabelFromCustomVariables(label: THREE.Object3D): void {
+    const cv = label.userData?.custom_variables as Record<string, { value: number }> | undefined;
+    if (!cv) return;
+    const keys = Object.keys(cv);
+    const relX = keys.find(k => k.includes('rel') && k.includes('x'));
+    const relY = keys.find(k => k.includes('rel') && k.includes('y'));
+    const relZ = keys.find(k => k.includes('rel') && k.includes('z'));
+    if (relX) label.position.x = cv[relX].value;
+    if (relY) label.position.y = cv[relY].value;
+    if (relZ) label.position.z = cv[relZ].value;
+    if (cv.rx && cv.ry && cv.rz && cv.rw) {
+        (label as THREE.Mesh).quaternion.set(cv.rx.value, cv.ry.value, cv.rz.value, cv.rw.value);
+    }
+}
 
 /** Parse a JSON-encoded {x,y,z} scale value, returning null on any malformed input. */
 function parseScale(raw: string | undefined): { x: number; y: number; z: number } | null {

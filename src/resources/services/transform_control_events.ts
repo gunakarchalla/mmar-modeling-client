@@ -4,6 +4,7 @@ import { inject, singleton } from 'aurelia';
 import * as THREE from 'three';
 import { ObjectInstance } from '../../../../mmar-global-data-structure';
 import { InstanceUtility } from './instance_utility';
+import { applyLocalChangeToYDoc } from '../collaboration/y_mapping';
 
 @singleton()
 export class TransformControlsEvents {
@@ -61,6 +62,9 @@ export class TransformControlsEvents {
                 instance.custom_variables[Object.keys(object.userData.custom_variables)[2]]["user_locked"] = true;
                 // instance.custom_variables = { ...instance.custom_variables, ...object.userData.custom_variables }
 
+                // Propagate the moved label's position variables to collaborators.
+                const positionKeys = Object.keys(object.userData.custom_variables).slice(0, 3);
+                this.syncCustomVariablesToYDoc(instance, positionKeys);
             }
         }
 
@@ -124,10 +128,33 @@ export class TransformControlsEvents {
                 instance.custom_variables[Object.keys(object.userData.custom_variables)[6]]["value"] = object.quaternion.w;
                 instance.custom_variables[Object.keys(object.userData.custom_variables)[6]]["user_locked"] = true;
                 // instance.custom_variables = { ...instance.custom_variables, ...object.userData.custom_variables }
-            
+
+                // Propagate the rotated label's rotation variables to collaborators.
+                const rotationKeys = Object.keys(object.userData.custom_variables).slice(3, 7);
+                this.syncCustomVariablesToYDoc(instance, rotationKeys);
             }
         }
 
         this.globalObjectInstance.render = true;
+    }
+
+    /**
+     * Propagate the given custom-variable keys of an object instance to collaborators
+     * editing the same shared scene. No-op when the scene is not shared or when we are
+     * currently applying a remote update (avoids echoing it back).
+     */
+    private syncCustomVariablesToYDoc(instance: ObjectInstance, keys: string[]): void {
+        const session = this.globalObjectInstance.sharedDocServiceRef?.forTab(this.globalObjectInstance.selectedTab);
+        if (!session || session.applyingRemote) return;
+        const customVariables = instance.custom_variables as Record<string, unknown>;
+        for (const key of keys) {
+            if (!key || customVariables[key] === undefined) continue;
+            applyLocalChangeToYDoc(
+                session.ydoc,
+                { type: 'custom_variable', classInstanceUuid: instance.uuid, key, value: customVariables[key] },
+                session.localOrigin
+            );
+        }
+        this.globalObjectInstance.doSceneInstancePatchLocal = true;
     }
 }
