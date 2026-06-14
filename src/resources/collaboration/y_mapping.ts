@@ -50,20 +50,6 @@ export function sceneInstanceToYDoc(sceneInstance: SceneInstance, ydoc: Y.Doc, o
         for (const ri of sceneInstance.relationclasses_instances ?? []) {
             relInstances.set(ri.uuid, relationClassInstanceToYMap(ri));
         }
-
-        // role_instances, attribute_instances, port_instances (stored as JSON blobs)
-        const roleInstances = ydoc.getMap<string>('role_instances');
-        for (const ri of sceneInstance.role_instances ?? []) {
-            roleInstances.set(ri.uuid, JSON.stringify(ri));
-        }
-        const attrInstances = ydoc.getMap<string>('attribute_instances');
-        for (const ai of sceneInstance.attribute_instances ?? []) {
-            attrInstances.set(ai.uuid, JSON.stringify(ai));
-        }
-        const portInstances = ydoc.getMap<string>('port_instances');
-        for (const pi of sceneInstance.port_instances ?? []) {
-            portInstances.set(pi.uuid, JSON.stringify(pi));
-        }
     }, origin);
 }
 
