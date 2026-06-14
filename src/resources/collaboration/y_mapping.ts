@@ -310,17 +310,6 @@ export function applyYDocChangeToSceneInstance(
         return result;
     }
 
-    // Scalar fields directly on the class instance Y.Map (name, description, etc.)
-    if (path.length === 1 && changedField === undefined) {
-        const ci = sceneInstance.class_instances.find(c => c.uuid === classInstanceUuid);
-        if (!ci) return result;
-        const ciMap = event.target as Y.Map<unknown>;
-        (event as Y.YMapEvent<unknown>).changes.keys.forEach((_change, key) => {
-            if (key === 'name') ci.name = ciMap.get('name') as string;
-            if (key === 'description') ci.description = ciMap.get('description') as string;
-        });
-    }
-
     return result;
 }
 
@@ -415,17 +404,6 @@ export function applyYDocRelationChangeToSceneInstance(
             if (coordMap.has('z')) ri.coordinates_2d.z = coordMap.get('z')!;
         }
         return result;
-    }
-
-    // Scalar fields (name, description) directly on the relation class instance Y.Map
-    if (path.length === 1 && changedField === undefined) {
-        const ri = sceneInstance.relationclasses_instances.find(r => r.uuid === relationClassInstanceUuid);
-        if (!ri) return result;
-        const riMap = event.target as Y.Map<unknown>;
-        (event as Y.YMapEvent<unknown>).changes.keys.forEach((_change, key) => {
-            if (key === 'name') ri.name = riMap.get('name') as string;
-            if (key === 'description') ri.description = riMap.get('description') as string;
-        });
     }
 
     return result;
