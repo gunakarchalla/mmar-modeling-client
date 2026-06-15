@@ -2,88 +2,51 @@ import { singleton } from 'aurelia';
 import * as THREE from 'three';
 import { GlobalDefinition } from '../global_definitions';
 import { SharedDocService } from './shared_doc_service';
+import { AwarenessRenderer, RenderedEntry } from './awareness_renderer';
 
-interface CursorEntry {
-    arrow: THREE.ArrowHelper;
-    tabIndex: number;
+interface CursorEntry extends RenderedEntry {
+    helper: THREE.ArrowHelper;
 }
 
 /** Smallest arrow length (world units) we bother drawing — avoids degenerate zero-length arrows. */
 const MIN_ARROW_LENGTH = 1e-3;
 
+/**
+ * Draws an arrow in each *remote* collaborator's colour pointing at the scene location
+ * they're hovering. Cursor rays travel over Yjs awareness (ephemeral presence, never
+ * persisted) under the `cursor` field. Near-mirror of {@link RemoteSelectionRenderer};
+ * shared lifecycle lives in {@link AwarenessRenderer}.
+ */
 @singleton()
-export class RemoteCursorRenderer {
-    /** clientId → arrow entry */
-    private cursors = new Map<number, CursorEntry>();
-    /** tabIndex → awareness change handler (for cleanup) */
-    private handlers = new Map<number, () => void>();
-
+export class RemoteCursorRenderer extends AwarenessRenderer<CursorEntry> {
     constructor(
-        private globalObjectInstance: GlobalDefinition,
-        private sharedDocService: SharedDocService,
-    ) {}
-
-    /**
-     * Subscribe to awareness changes for a tab's shared session.
-     * Call this immediately after SharedDocService.attach().
-     */
-    bindToSession(tabIndex: number): void {
-        const session = this.sharedDocService.forTab(tabIndex);
-        if (!session) return;
-
-        const handler = () => this.updateCursors(tabIndex);
-        session.awareness.on('change', handler);
-        this.handlers.set(tabIndex, handler);
-    }
-
-    /**
-     * Remove all cursor arrows for a tab and unsubscribe.
-     * Call this on SharedDocService.detach().
-     */
-    clearForTab(tabIndex: number): void {
-        const tabCtx = this.globalObjectInstance.tabContext[tabIndex];
-
-        // Remove arrows belonging to this tab from its scene
-        for (const [clientId, entry] of Array.from(this.cursors)) {
-            if (entry.tabIndex === tabIndex) {
-                if (tabCtx?.threeScene) {
-                    tabCtx.threeScene.remove(entry.arrow);
-                    entry.arrow.dispose();
-                }
-                this.cursors.delete(clientId);
-            }
-        }
-
-        // Unsubscribe awareness listener
-        const session = this.sharedDocService.forTab(tabIndex);
-        const handler = this.handlers.get(tabIndex);
-        if (session && handler) {
-            session.awareness.off('change', handler);
-        }
-        this.handlers.delete(tabIndex);
+        globalObjectInstance: GlobalDefinition,
+        sharedDocService: SharedDocService,
+    ) {
+        super(globalObjectInstance, sharedDocService);
     }
 
     // -----------------------------------------------------------------------
-    // Private helpers
+    // AwarenessRenderer hook
     // -----------------------------------------------------------------------
 
-    private updateCursors(tabIndex: number): void {
+    protected updateForTab(tabIndex: number): void {
         const session = this.sharedDocService.forTab(tabIndex);
         const tabCtx = this.globalObjectInstance.tabContext[tabIndex];
         if (!session || !tabCtx?.threeScene) return;
+        const scene = tabCtx.threeScene;
 
         const localId = session.awareness.clientID;
         const states = session.awareness.getStates();
 
         // Remove arrows for clients that left or deactivated their cursor
-        for (const [clientId, entry] of Array.from(this.cursors)) {
+        for (const [clientId, entry] of Array.from(this.entries)) {
             if (entry.tabIndex !== tabIndex) continue;
             const state = states.get(clientId);
             const cursorActive = state?.cursor?.active === true;
             if (!states.has(clientId) || !cursorActive) {
-                tabCtx.threeScene.remove(entry.arrow);
-                entry.arrow.dispose();
-                this.cursors.delete(clientId);
+                this.disposeEntry(entry, scene);
+                this.entries.delete(clientId);
             }
         }
 
@@ -99,19 +62,23 @@ export class RemoteCursorRenderer {
             const user = state?.user as { color?: string } | undefined;
             const color = user?.color ?? 'hsl(0, 70%, 55%)';
 
-            let entry = this.cursors.get(clientId);
+            let entry = this.entries.get(clientId);
             if (!entry) {
                 const arrow = this.createCursorArrow(color);
-                tabCtx.threeScene.add(arrow);
-                entry = { arrow, tabIndex };
-                this.cursors.set(clientId, entry);
+                scene.add(arrow);
+                entry = { helper: arrow, tabIndex };
+                this.entries.set(clientId, entry);
             }
 
-            this.orientArrow(entry.arrow, cursor.origin, cursor.target);
+            this.orientArrow(entry.helper, cursor.origin, cursor.target);
         }
 
         this.globalObjectInstance.render = true;
     }
+
+    // -----------------------------------------------------------------------
+    // Private helpers
+    // -----------------------------------------------------------------------
 
     /** Point an arrow from `origin` to `target`, scaling its head with its length. */
     private orientArrow(

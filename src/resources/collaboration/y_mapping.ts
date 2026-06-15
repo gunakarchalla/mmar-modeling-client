@@ -217,16 +217,16 @@ export function applyYDocChangeToSceneInstance(
             if (coordMap.has('x')) ci.coordinates_2d.x = coordMap.get('x')!;
             if (coordMap.has('y')) ci.coordinates_2d.y = coordMap.get('y')!;
             if (coordMap.has('z')) ci.coordinates_2d.z = coordMap.get('z')!;
-            // Mirror to Three.js object
-            threeScene.traverse(obj => {
-                if (obj.uuid === classInstanceUuid) {
-                    obj.position.set(
-                        ci.coordinates_2d.x,
-                        ci.coordinates_2d.y,
-                        ci.coordinates_2d.z
-                    );
-                }
-            });
+            // Mirror to Three.js object (getObjectByProperty stops at the first match,
+            // unlike traverse which would walk the whole scene on every drag frame).
+            const obj = threeScene.getObjectByProperty('uuid', classInstanceUuid);
+            if (obj) {
+                obj.position.set(
+                    ci.coordinates_2d.x,
+                    ci.coordinates_2d.y,
+                    ci.coordinates_2d.z
+                );
+            }
         }
         return result;
     }
@@ -240,16 +240,15 @@ export function applyYDocChangeToSceneInstance(
             if (rotMap.has('y')) ci.rotation.y = rotMap.get('y')!;
             if (rotMap.has('z')) ci.rotation.z = rotMap.get('z')!;
             if (rotMap.has('w')) ci.rotation.w = rotMap.get('w')!;
-            threeScene.traverse(obj => {
-                if (obj.uuid === classInstanceUuid) {
-                    (obj as THREE.Mesh).quaternion.set(
-                        ci.rotation.x,
-                        ci.rotation.y,
-                        ci.rotation.z,
-                        ci.rotation.w
-                    );
-                }
-            });
+            const obj = threeScene.getObjectByProperty('uuid', classInstanceUuid);
+            if (obj) {
+                (obj as THREE.Mesh).quaternion.set(
+                    ci.rotation.x,
+                    ci.rotation.y,
+                    ci.rotation.z,
+                    ci.rotation.w
+                );
+            }
         }
         return result;
     }
@@ -527,21 +526,10 @@ function classInstanceFromYMap(yMap: Y.Map<unknown>): ClassInstance {
             }
         });
     }
-    const attrMap = yMap.get('attribute_instance') as Y.Map<Y.Map<unknown>>;
-    ci.attribute_instance = [];
-    if (attrMap) {
-        attrMap.forEach((attrEntry) => {
-            const ai = new AttributeInstance(
-                attrEntry.get('uuid') as string,
-                attrEntry.get('uuid_attribute') as string,
-                null,
-                ci.uuid,
-                (attrEntry.get('value') as string) ?? ''
-            );
-            ai.name = (attrEntry.get('name') as string) ?? '';
-            ci.attribute_instance.push(ai);
-        });
-    }
+    ci.attribute_instance = attrInstancesFromYMap(
+        yMap.get('attribute_instance') as Y.Map<Y.Map<unknown>>,
+        ci.uuid
+    );
     return ci;
 }
 
@@ -586,21 +574,10 @@ function relationClassInstanceFromYMap(yMap: Y.Map<unknown>): RelationclassInsta
     };
     const lpArray = yMap.get('line_points') as unknown as Y.Array<string>;
     ri.line_points = lpArray ? lpArray.toArray().map(s => JSON.parse(s)) : [];
-    const attrMap = yMap.get('attribute_instance') as Y.Map<Y.Map<unknown>>;
-    ri.attribute_instance = [];
-    if (attrMap) {
-        attrMap.forEach((attrEntry) => {
-            const ai = new AttributeInstance(
-                attrEntry.get('uuid') as string,
-                attrEntry.get('uuid_attribute') as string,
-                null,
-                ri.uuid,
-                (attrEntry.get('value') as string) ?? ''
-            );
-            ai.name = (attrEntry.get('name') as string) ?? '';
-            ri.attribute_instance.push(ai);
-        });
-    }
+    ri.attribute_instance = attrInstancesFromYMap(
+        yMap.get('attribute_instance') as Y.Map<Y.Map<unknown>>,
+        ri.uuid
+    );
     // Reconstruct role instances (used for deletion cascading)
     const roleFromJson = yMap.get('role_instance_from') as string | undefined;
     if (roleFromJson) {
@@ -650,4 +627,29 @@ function attrInstancesToYMap(attrs: AttributeInstance[]): Y.Map<Y.Map<unknown>> 
         m.set(attr.uuid, am);
     }
     return m;
+}
+
+/**
+ * Reconstruct AttributeInstances from the nested `attribute_instance` Y.Map
+ * (inverse of attrInstancesToYMap). `parentUuid` is the owning class- or
+ * relationclass-instance uuid recorded on each AttributeInstance.
+ */
+function attrInstancesFromYMap(
+    attrMap: Y.Map<Y.Map<unknown>> | undefined,
+    parentUuid: string
+): AttributeInstance[] {
+    const attrs: AttributeInstance[] = [];
+    if (!attrMap) return attrs;
+    attrMap.forEach((attrEntry) => {
+        const ai = new AttributeInstance(
+            attrEntry.get('uuid') as string,
+            attrEntry.get('uuid_attribute') as string,
+            null,
+            parentUuid,
+            (attrEntry.get('value') as string) ?? ''
+        );
+        ai.name = (attrEntry.get('name') as string) ?? '';
+        attrs.push(ai);
+    });
+    return attrs;
 }
