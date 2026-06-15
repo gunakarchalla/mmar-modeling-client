@@ -4,6 +4,40 @@ import { SceneInstance, ClassInstance, AttributeInstance, RelationclassInstance,
 import { GlobalDefinition } from '../global_definitions';
 
 // ---------------------------------------------------------------------------
+// Y.Doc shape
+// ---------------------------------------------------------------------------
+//
+// A shared scene instance is encoded as a single Y.Doc with three top-level maps.
+// This is the implicit schema every function below reads and writes — keep the
+// *ToYMap / *FromYMap pairs and the apply* handlers in sync with it.
+//
+//   meta                        Y.Map<string>
+//     uuid, uuid_scene_type, name, description
+//
+//   class_instances             Y.Map<Y.Map>    keyed by ClassInstance.uuid
+//     <uuid> →
+//       uuid, uuid_class, name, description : string
+//       coordinates_2d          Y.Map<number>   { x, y, z }
+//       rotation                Y.Map<number>   { x, y, z, w }
+//       custom_variables        Y.Map<string>   values are JSON strings (incl. 'scale')
+//       attribute_instance      Y.Map<Y.Map>    keyed by AttributeInstance.uuid
+//         <uuid> → { uuid, uuid_attribute, name, value } : string
+//
+//   relationclasses_instances   Y.Map<Y.Map>    keyed by RelationclassInstance.uuid
+//     <uuid> →
+//       uuid, uuid_class, name, description : string
+//       coordinates_2d          Y.Map<number>   { x, y, z }
+//       rotation                Y.Map<number>   { x, y, z, w }
+//       line_points             Y.Array<string> each element a JSON-encoded point
+//       attribute_instance      Y.Map<Y.Map>    (same shape as above)
+//       role_instance_from,
+//       role_instance_to        string          JSON-encoded RoleInstance (for delete cascades)
+//
+// Encoding note: nested values without their own CRDT semantics (custom_variables
+// entries, line_points, role instances) are stored as JSON strings rather than nested
+// Y types — they are replaced wholesale on change, never merged field-by-field.
+//
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -165,7 +199,7 @@ export function applyYDocChangeToSceneInstance(
     event: Y.YEvent<Y.Map<unknown>>,
     sceneInstance: SceneInstance,
     threeScene: THREE.Scene,
-    globalDef: GlobalDefinition
+    globalObjectInstance: GlobalDefinition
 ): YDocChangeResult {
     const result: YDocChangeResult = { classInstanceAdded: false, relationInstanceAdded: false, changedAttributeInstances: [] };
     const path = event.path as Array<string | number>;
@@ -181,11 +215,11 @@ export function applyYDocChangeToSceneInstance(
                 const obj = threeScene.getObjectByProperty('uuid', uuid);
                 if (obj) threeScene.remove(obj);
                 // Remove from drag objects of the current tab
-                const tabCtx = globalDef.tabContext[globalDef.selectedTab];
+                const tabCtx = globalObjectInstance.tabContext[globalObjectInstance.selectedTab];
                 if (tabCtx) {
                     tabCtx.contextDragObjects = tabCtx.contextDragObjects.filter(o => o.uuid !== uuid);
                 }
-                globalDef.dragObjects = globalDef.dragObjects.filter(o => o.uuid !== uuid);
+                globalObjectInstance.dragObjects = globalObjectInstance.dragObjects.filter(o => o.uuid !== uuid);
             } else if (change.action === 'add') {
                 // Reconstruct the ClassInstance from the Y.Map and add to the in-memory model.
                 const classInstancesMap = event.target as Y.Map<Y.Map<unknown>>;
@@ -195,8 +229,8 @@ export function applyYDocChangeToSceneInstance(
                     sceneInstance.class_instances.push(newCi);
                     // Register the new attribute instances in the global flat list
                     for (const ai of newCi.attribute_instance) {
-                        if (!globalDef.attribute_instances.find(a => a.uuid === ai.uuid)) {
-                            globalDef.attribute_instances.push(ai);
+                        if (!globalObjectInstance.attribute_instances.find(a => a.uuid === ai.uuid)) {
+                            globalObjectInstance.attribute_instances.push(ai);
                         }
                     }
                     result.classInstanceAdded = true;
@@ -307,7 +341,7 @@ export function applyYDocRelationChangeToSceneInstance(
     event: Y.YEvent<Y.Map<unknown>>,
     sceneInstance: SceneInstance,
     threeScene: THREE.Scene,
-    globalDef: GlobalDefinition
+    globalObjectInstance: GlobalDefinition
 ): YDocChangeResult {
     const result: YDocChangeResult = { classInstanceAdded: false, relationInstanceAdded: false, changedAttributeInstances: [] };
     const path = event.path as Array<string | number>;
@@ -320,9 +354,9 @@ export function applyYDocRelationChangeToSceneInstance(
                 if (idx !== -1) sceneInstance.relationclasses_instances.splice(idx, 1);
                 const obj = threeScene.getObjectByProperty('uuid', uuid);
                 if (obj) threeScene.remove(obj);
-                globalDef.dragObjects = globalDef.dragObjects.filter(o => o.uuid !== uuid);
+                globalObjectInstance.dragObjects = globalObjectInstance.dragObjects.filter(o => o.uuid !== uuid);
                 // Remove role instances that belong to this relation
-                globalDef.role_instances = globalDef.role_instances.filter(
+                globalObjectInstance.role_instances = globalObjectInstance.role_instances.filter(
                     r => r.uuid_relationclass !== uuid
                 );
             } else if (change.action === 'add') {
@@ -334,16 +368,16 @@ export function applyYDocRelationChangeToSceneInstance(
                     sceneInstance.relationclasses_instances.push(newRi);
                     // Register attribute instances in the global flat list
                     for (const ai of newRi.attribute_instance) {
-                        if (!globalDef.attribute_instances.find(a => a.uuid === ai.uuid)) {
-                            globalDef.attribute_instances.push(ai);
+                        if (!globalObjectInstance.attribute_instances.find(a => a.uuid === ai.uuid)) {
+                            globalObjectInstance.attribute_instances.push(ai);
                         }
                     }
                     // Register role instances in the global flat list
-                    if (newRi.role_instance_from && !globalDef.role_instances.find(r => r.uuid === newRi.role_instance_from.uuid)) {
-                        globalDef.role_instances.push(newRi.role_instance_from);
+                    if (newRi.role_instance_from && !globalObjectInstance.role_instances.find(r => r.uuid === newRi.role_instance_from.uuid)) {
+                        globalObjectInstance.role_instances.push(newRi.role_instance_from);
                     }
-                    if (newRi.role_instance_to && !globalDef.role_instances.find(r => r.uuid === newRi.role_instance_to.uuid)) {
-                        globalDef.role_instances.push(newRi.role_instance_to);
+                    if (newRi.role_instance_to && !globalObjectInstance.role_instances.find(r => r.uuid === newRi.role_instance_to.uuid)) {
+                        globalObjectInstance.role_instances.push(newRi.role_instance_to);
                     }
                     result.relationInstanceAdded = true;
                 }
