@@ -11,7 +11,7 @@ import { GlobalDefinition } from '../global_definitions';
 // This is the implicit schema every function below reads and writes — keep the
 // *ToYMap / *FromYMap pairs and the apply* handlers in sync with it.
 //
-//   meta                        Y.Map<string>
+//   info                        Y.Map<string>
 //     uuid, uuid_scene_type, name, description
 //
 //   class_instances             Y.Map<Y.Map>    keyed by ClassInstance.uuid
@@ -66,12 +66,12 @@ export interface YDocChangeResult {
 
 export function sceneInstanceToYDoc(sceneInstance: SceneInstance, ydoc: Y.Doc, origin?: object): void {
     ydoc.transact(() => {
-        // meta
-        const meta = ydoc.getMap<string>('meta');
-        meta.set('uuid', sceneInstance.uuid ?? '');
-        meta.set('uuid_scene_type', sceneInstance.uuid_scene_type ?? '');
-        meta.set('name', sceneInstance.name ?? '');
-        meta.set('description', sceneInstance.description ?? '');
+        // info
+        const info = ydoc.getMap<string>('info');
+        info.set('uuid', sceneInstance.uuid ?? '');
+        info.set('uuid_scene_type', sceneInstance.uuid_scene_type ?? '');
+        info.set('name', sceneInstance.name ?? '');
+        info.set('description', sceneInstance.description ?? '');
 
         // class_instances
         const classInstances = ydoc.getMap<Y.Map<unknown>>('class_instances');
