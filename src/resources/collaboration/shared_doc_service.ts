@@ -5,7 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 import { SceneInstance } from '../../../../mmar-global-data-structure';
 import { GlobalDefinition } from '../global_definitions';
 import { FetchHelper } from '../services/fetchHelper';
-import { sceneInstanceToYDoc, applyYDocChangeToSceneInstance, applyYDocRelationChangeToSceneInstance, YDocChangeResult } from './y_mapping';
+import { sceneInstanceToYDoc, applyYDocClassChangeToSceneInstance, applyYDocRelationChangeToSceneInstance, YDocChangeResult } from './y_mapping';
 import { userColor, initials } from './color_util';
 
 // ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ export class SharedDocService {
             try {
                 const aggregate: YDocChangeResult = { classInstanceAdded: false, relationInstanceAdded: false, changedAttributeInstances: [] };
                 for (const event of events) {
-                    const r = applyYDocChangeToSceneInstance(
+                    const r = applyYDocClassChangeToSceneInstance(
                         event,
                         tabCtx.sceneInstance,
                         tabCtx.threeScene,

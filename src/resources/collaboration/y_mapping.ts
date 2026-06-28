@@ -190,12 +190,13 @@ export function applyLocalChangeToYDoc(
 }
 
 // ---------------------------------------------------------------------------
-// Apply a Yjs deep event to the in-memory SceneInstance + Three.js scene.
-// Called ONLY for remote-origin events (local-origin events are skipped by the
-// SharedDocService observer because the in-memory model was already updated).
+// Apply a class-instance Yjs deep event to the in-memory SceneInstance +
+// Three.js scene. Called ONLY for remote-origin events (local-origin events are
+// skipped by the SharedDocService observer because the in-memory model was
+// already updated).
 // ---------------------------------------------------------------------------
 
-export function applyYDocChangeToSceneInstance(
+export function applyYDocClassChangeToSceneInstance(
     event: Y.YEvent<Y.Map<unknown>>,
     sceneInstance: SceneInstance,
     threeScene: THREE.Scene,
