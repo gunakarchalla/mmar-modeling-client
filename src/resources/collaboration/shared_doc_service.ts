@@ -7,6 +7,7 @@ import { GlobalDefinition } from '../global_definitions';
 import { FetchHelper } from '../services/fetchHelper';
 import { sceneInstanceToYDoc, applyYDocClassChangeToSceneInstance, applyYDocRelationChangeToSceneInstance, YDocChangeResult } from './y_mapping';
 import { userColor, initials } from './color_util';
+import { SYNC_URL } from 'config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,11 +74,10 @@ export class SharedDocService {
             sceneInstanceToYDoc(sceneInstance, ydoc, localOrigin);
         }
 
-        const syncUrl = (process.env as any).SYNC_URL || 'ws://localhost:8060';
         const token = this.globalObjectInstance.accessToken;
 
         const provider = new WebsocketProvider(
-            syncUrl,
+            SYNC_URL,
             sceneInstance.uuid,
             ydoc,
             { params: { token } }

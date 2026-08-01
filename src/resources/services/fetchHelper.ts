@@ -5,10 +5,11 @@ import { ICustomElementViewModel } from 'aurelia';
 import { Class, Metamodel, SceneType, Attribute, Relationclass, Role, Port, AttributeType, SceneInstance, ClassInstance, RelationclassInstance, RoleInstance, PortInstance, AttributeInstance, Procedure, UUID } from '../../../../mmar-global-data-structure';
 import { IHydratedController } from '@aurelia/runtime-html';
 import { GlobalDefinition } from 'resources/global_definitions';
+import { API_URL } from 'config';
 
 export class FetchHelper implements ICustomElementViewModel {
 
-    public baseUrl: string = process.env.API_URL;
+    public baseUrl: string = API_URL;
     protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
 
 
