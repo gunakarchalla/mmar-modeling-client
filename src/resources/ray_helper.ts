@@ -78,11 +78,12 @@ clearCursor(): void {
  * a 3D user's rakes in at an angle), head on the point the ray lands on.
  *
  * ANCHOR, IN PRIORITY ORDER: the first object the ray hits, else the modelling plane.
- * The old far-plane fallback is deliberately gone — it put the arrow head at the far
- * clipping distance, nowhere near what the sender was looking at, and every receiver
- * had to guess whether a coordinate meant "hit that object" or "hit nothing". A ray
- * that reaches neither (3D only: pointing away from the plane at empty space) has
- * nothing to say, so the cursor goes inactive instead of being drawn somewhere wrong.
+ * A ray that reaches neither (3D only: pointing away from the plane at empty space)
+ * has nothing to say, so the cursor goes inactive instead of being drawn somewhere
+ * wrong. Resolving the anchor HERE, on the broadcaster, is deliberate: only the sender
+ * can tell a geometry hit from a miss — a receiver sees only coordinates — and naming
+ * the hit object (`objectUuid`) is what lets receivers outline the object a peer is
+ * pointing at.
  *
  * The near-plane point is obtained by unprojecting the pointer's normalized device
  * coordinates at clip-space depth z = -1. Because the unprojection runs through the
