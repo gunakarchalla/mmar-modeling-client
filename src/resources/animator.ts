@@ -10,6 +10,7 @@ import { RelationclassInstance } from '../../../mmar-global-data-structure';
 import { MechanismUtility } from './services/mechanism_utility';
 import { CoordinatesUpdater } from './services/coordinates_updater';
 import { RemoteSelectionRenderer } from './collaboration/remote_selection_renderer';
+import { RemoteCursorRenderer } from './collaboration/remote_cursor_renderer';
 
 @singleton()
 export class Animator {
@@ -21,7 +22,8 @@ export class Animator {
     private instanceUtility: InstanceUtility,
     private mechanismUtility: MechanismUtility,
     private coordinatesUpdater: CoordinatesUpdater,
-    private remoteSelectionRenderer: RemoteSelectionRenderer
+    private remoteSelectionRenderer: RemoteSelectionRenderer,
+    private remoteCursorRenderer: RemoteCursorRenderer
   ) {
 
   }
@@ -46,8 +48,11 @@ export class Animator {
 
     if (this.globalObjectInstance.render) {
       this.globalObjectInstance.render = false;
-      // Keep collaborators' selection boxes glued to objects they move (no-op when none).
+      // Keep collaborators' selection boxes glued to objects they move, and their labels
+      // at a constant on-screen size as OUR camera moves (awareness only fires when a
+      // peer acts, so neither can be driven by awareness alone). No-op when none.
       this.remoteSelectionRenderer.refreshBoxes();
+      this.remoteCursorRenderer.refreshCursors();
       this.globalObjectInstance.renderer.render(this.globalObjectInstance.scene, this.globalObjectInstance.camera);
       
         if (this.globalObjectInstance.runMechanism) {
