@@ -61,6 +61,12 @@ export interface SharedSession {
   connectionStatus: ConnectionStatus;
   /** Human-readable banner shown while disconnected. Null when connected. */
   disconnectBanner: string | null;
+  /**
+   * Bumped every time the session goes offline. A reconnect refresh records it when it
+   * starts and drops its results if it has changed by the time they arrive (see
+   * `onReconnect`).
+   */
+  connectionEpoch: number;
   /** Awareness 'change' handler feeding collabStore.users (kept so detach can unsubscribe). */
   usersHandler?: () => void;
 }
@@ -122,6 +128,7 @@ export class SharedDocService {
       access,
       connectionStatus: "connecting",
       disconnectBanner: null,
+      connectionEpoch: 0,
     };
 
     this.installObservers(session, tabIndex);
@@ -191,6 +198,18 @@ export class SharedDocService {
   private setSessionBanner(tabIndex: number, session: SharedSession, banner: string | null): void {
     session.disconnectBanner = banner;
     useCollabStore.getState().patchTab(tabIndex, { banner });
+  }
+
+  /**
+   * Put the session into its offline state: read-only (edits could not be relayed
+   * anyway), a banner saying why, and any reconnect refresh still in flight marked stale.
+   */
+  private goOffline(tabIndex: number, session: SharedSession, banner: string): void {
+    session.connectionEpoch++;
+    this.setSessionStatus(tabIndex, session, "disconnected");
+    this.setSessionAccess(tabIndex, session, "read");
+    this.setSessionBanner(tabIndex, session, banner);
+    this.setLocalUserState(session.awareness, "read");
   }
 
   // -----------------------------------------------------------------------
@@ -460,12 +479,8 @@ export class SharedDocService {
         // Banner is already set (either null on first connect, or from the
         // disconnect event that preceded this retry).
       } else if (status === "disconnected") {
-        this.setSessionStatus(tabIndex, session, "disconnected");
         wasDisconnected = true;
-        // Force read-only so edits are blocked while we're offline.
-        this.setSessionAccess(tabIndex, session, "read");
-        this.setSessionBanner(tabIndex, session, "Disconnected — reconnecting…");
-        this.setLocalUserState(session.awareness, "read");
+        this.goOffline(tabIndex, session, "Disconnected — reconnecting…");
       } else if (status === "connected") {
         this.setSessionStatus(tabIndex, session, "connected");
         if (wasDisconnected) {
@@ -501,21 +516,35 @@ export class SharedDocService {
         eventBus.publish("sceneAccessRevoked", { tabIndex });
       } else if (code === 4503) {
         // Sync server temporarily unavailable — provider will keep retrying.
-        this.setSessionStatus(tabIndex, session, "disconnected");
         wasDisconnected = true;
-        this.setSessionAccess(tabIndex, session, "read");
-        this.setSessionBanner(tabIndex, session, "Sync server unavailable — your changes won't be saved until reconnected.");
-        this.setLocalUserState(session.awareness, "read");
+        this.goOffline(tabIndex, session, "Sync server unavailable — your changes won't be saved until reconnected.");
       }
       // Codes 1000 (normal close) and others are handled by the status listener.
     });
   }
 
-  /** Called once on the first 'connected' event after a 'disconnected'. */
+  /**
+   * Called once on the first 'connected' event after a 'disconnected'.
+   *
+   * y-websocket reports 'connected' as soon as the socket opens, but the sync server checks
+   * the token and access only after that, so it can still refuse this socket (4503, say)
+   * while the REST calls below are in flight. A refresh that outlives its socket must not
+   * clear the offline banner or hand write access back, and one overtaken by a later
+   * reconnect must not overwrite that one's fresher scene. Its results are therefore
+   * applied together, after both calls, and only if the session has not gone offline (or
+   * been detached) since it started.
+   */
   private async onReconnect(tabIndex: number, session: SharedSession): Promise<void> {
+    const epoch = session.connectionEpoch;
+    const isCurrent = () => session.connectionEpoch === epoch && this.sessions.get(tabIndex) === session;
+
     try {
-      // 1. Re-fetch authoritative scene state from REST.
+      // 1. Re-fetch authoritative scene state and the caller's access level (which may
+      //    have changed while offline). If the access call fails, the previous level holds.
       const freshScene = await backendService.sceneInstancesGET(session.sceneInstanceUuid);
+      const me = await backendService.sceneAccessMeGET(session.sceneInstanceUuid).catch(() => undefined);
+
+      if (!isCurrent()) return;
 
       // 2. Update the in-memory tab context so the rest of the app sees fresh data.
       const tabCtx = this.globalObjectInstance.tabContext[tabIndex];
@@ -523,25 +552,18 @@ export class SharedDocService {
         tabCtx.sceneInstance = freshScene;
       }
 
-      // 3. Re-fetch the caller's access level (may have changed while offline).
-      try {
-        const me = await backendService.sceneAccessMeGET(session.sceneInstanceUuid);
-        if (me?.level) {
-          this.setSessionAccess(tabIndex, session, me.level);
-        }
-      } catch {
-        // If the call fails, assume the previous access level still holds.
+      // 3. Restore the access level and broadcast it with our user state.
+      if (me?.level) {
+        this.setSessionAccess(tabIndex, session, me.level);
       }
-
-      // 4. Broadcast our updated user state with the restored access level.
       this.setLocalUserState(session.awareness, session.access);
 
-      // 5. Signal the scene view to rebuild the Three.js scene from the fresh data.
+      // 4. Signal the scene view to rebuild the Three.js scene from the fresh data.
       eventBus.publish("sharedSceneReconnected", { tabIndex });
     } catch {
       /* keep the previous in-memory state */
     } finally {
-      this.setSessionBanner(tabIndex, session, null);
+      if (isCurrent()) this.setSessionBanner(tabIndex, session, null);
     }
   }
 }

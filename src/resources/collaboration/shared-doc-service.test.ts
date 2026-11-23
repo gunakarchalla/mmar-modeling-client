@@ -648,6 +648,59 @@ describe("connection lifecycle", () => {
     expect(session.disconnectBanner).toBeNull();
   });
 
+  /** Let every pending promise callback run. */
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  // y-websocket reports 'connected' as soon as the socket opens; the sync server checks
+  // access after that and can still refuse it (the provider then emits 'connection-close'
+  // followed by 'disconnected') while the refresh's REST calls are in flight.
+  it("drops a reconnect refresh that finishes after the server refused the socket", async () => {
+    let resolveScene!: (scene: SceneInstance) => void;
+    mocks.backendService.sceneInstancesGET.mockReturnValueOnce(new Promise((resolve) => (resolveScene = resolve)));
+    mocks.backendService.sceneAccessMeGET.mockResolvedValueOnce({ level: "edit" });
+    const session = service.attach(0, scene, "edit");
+    const received: { tabIndex: number }[] = [];
+    const sub = eventBus.subscribe("sharedSceneReconnected", (payload) => received.push(payload));
+
+    mocks.providers[0].emit("status", { status: "disconnected" });
+    mocks.providers[0].emit("status", { status: "connected" });
+    mocks.providers[0].emit("connection-close", { code: 4503 });
+    mocks.providers[0].emit("status", { status: "disconnected" });
+    resolveScene(makeScene());
+    await flush();
+    sub.dispose();
+
+    // Still offline, so still read-only with the banner, and the scene left alone.
+    expect(session.access).toBe("read");
+    expect(session.disconnectBanner).toBe("Disconnected — reconnecting…");
+    expect((mocks.globalObject.tabContext[0] as any).sceneInstance).toBe(scene);
+    expect(received).toEqual([]);
+  });
+
+  it("does not let an older reconnect refresh overwrite a newer one", async () => {
+    let resolveOlder!: (scene: SceneInstance) => void;
+    const newer = makeScene();
+    mocks.backendService.sceneInstancesGET
+      .mockReturnValueOnce(new Promise((resolve) => (resolveOlder = resolve)))
+      .mockResolvedValueOnce(newer);
+    mocks.backendService.sceneAccessMeGET.mockResolvedValueOnce({ level: "edit" }).mockResolvedValueOnce({ level: "edit" });
+    const session = service.attach(0, scene, "edit");
+
+    // The first reconnect's scene fetch hangs while the socket drops and reconnects.
+    mocks.providers[0].emit("status", { status: "disconnected" });
+    mocks.providers[0].emit("status", { status: "connected" });
+    mocks.providers[0].emit("status", { status: "disconnected" });
+    mocks.providers[0].emit("status", { status: "connected" });
+    await flush();
+    expect((mocks.globalObject.tabContext[0] as any).sceneInstance).toBe(newer);
+
+    resolveOlder(makeScene());
+    await flush();
+    expect((mocks.globalObject.tabContext[0] as any).sceneInstance).toBe(newer);
+    expect(session.access).toBe("edit");
+    expect(session.disconnectBanner).toBeNull();
+  });
+
   // The 4401 branch is the only one that touches browser globals. The file stays in
   // vitest's default node env (fast, and `location.reload` is "not implemented" in
   // jsdom anyway); the two globals it needs are stubbed just for this test.
