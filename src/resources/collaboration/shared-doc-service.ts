@@ -499,7 +499,7 @@ export class SharedDocService {
         session.provider.disconnect();
         this.setSessionBanner(tabIndex, session, "Your access to this scene was revoked.");
         eventBus.publish("sceneAccessRevoked", { tabIndex });
-      } else if (code === 4500) {
+      } else if (code === 4503) {
         // Sync server temporarily unavailable — provider will keep retrying.
         this.setSessionStatus(tabIndex, session, "disconnected");
         wasDisconnected = true;

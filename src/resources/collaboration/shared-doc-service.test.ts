@@ -1,6 +1,6 @@
 // P10 unit tests for SharedDocService: session lifecycle (attach / detach / forTab),
 // the collabStore mirror, the remote-vs-local observer split, and the connection-close
-// codes (4401 / 4403 / 4500) the sync server really sends.
+// codes (4401 / 4403 / 4503) the sync server really sends.
 //
 // `y-websocket` is mocked with a fake provider whose `on(...)` handlers the test can
 // fire — the real one opens a socket (that path is covered live in
@@ -682,10 +682,10 @@ describe("connection lifecycle", () => {
     expect(received).toEqual([{ tabIndex: 0 }]);
   });
 
-  it("keeps retrying but goes read-only on close code 4500 (sync server down)", () => {
+  it("keeps retrying but goes read-only on close code 4503 (sync server down)", () => {
     const session = service.attach(0, scene, "edit");
 
-    mocks.providers[0].emit("connection-close", { code: 4500 });
+    mocks.providers[0].emit("connection-close", { code: 4503 });
 
     // Not disconnected explicitly — the provider must keep retrying.
     expect(mocks.providers[0].disconnect).not.toHaveBeenCalled();

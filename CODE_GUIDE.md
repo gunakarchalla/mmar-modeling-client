@@ -977,7 +977,7 @@ from that fresh copy and the undo history restarts. Close codes from the sync se
 |---|---|---|
 | 4401 | bad or expired JWT | alert, token cleared, page reloaded |
 | 4403 | access revoked | `sceneAccessRevoked`, then an alert and the tab closes |
-| 4500 | sync server unavailable | read-only with a banner; the provider keeps retrying |
+| 4503 | sync server unavailable | read-only with a banner; the provider keeps retrying |
 
 ---
 
