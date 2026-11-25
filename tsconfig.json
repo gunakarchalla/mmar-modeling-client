@@ -1,34 +1,39 @@
 {
   "compilerOptions": {
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "module": "esnext",
-    "typeRoots": [
-      "./node_modules/@types"
-    ],
-    "lib": [
-      "es2015",
-      "dom"
-    ],
-    "moduleResolution": "node",
-    "baseUrl": "src",
+    "target": "ESNext",
+    "useDefineForClassFields": false,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "skipLibCheck": true,
-    "target": "ES5",
-    "esModuleInterop": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
-    "importHelpers": true,
-    "sourceMap": true
-  },
-  "include": [
-    "test",
-    "src"
-  ],
-  "files": [
-    "src/resource.d.ts"
-  ],
-  "references": [
-    {
-      "path": "../mmar-global-data-structure" 
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Decorators / class-transformer (no emitDecoratorMetadata by design) */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+    "useUnknownInCatchVariables": false,
+
+    /* Linting */
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "importHelpers": false,
+
+    /* Path aliases */
+    "paths": {
+      "@gds": ["../mmar-global-data-structure/index.ts"],
+      "@gds/*": ["../mmar-global-data-structure/*"],
+      "@/*": ["./src/*"]
     }
-  ]
+  },
+  "include": ["src"]
 }
